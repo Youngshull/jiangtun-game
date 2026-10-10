@@ -100,13 +100,39 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .timeline{margin-top:14px}
 .timeline input{width:100%;accent-color:var(--accent)}
 .timeline .yr{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+/* loading screen: a calf leaping over moving water, drawn before any artwork downloads */
+.boot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#e7dcc3;z-index:30;transition:opacity .45s}
+.boot.out{opacity:0;pointer-events:none}
+.boot-stage{position:relative;width:240px;height:170px;overflow:hidden}
+.boot-jt{position:absolute;left:70px;top:70px;width:100px;filter:drop-shadow(0 3px 0 rgba(60,50,30,.22));animation:leap 2.4s cubic-bezier(.45,.05,.55,.95) infinite;transform-origin:50% 50%}
+@keyframes leap{0%{transform:translate(-80px,70px) rotate(-30deg)}20%{transform:translate(-45px,10px) rotate(-30deg)}50%{transform:translate(0,-55px) rotate(0deg)}80%{transform:translate(45px,10px) rotate(32deg)}100%{transform:translate(80px,70px) rotate(32deg)}}
+.boot-wave{position:absolute;left:0;bottom:0;width:200%;height:58px;fill:#8fa77e;animation:wave 2.4s linear infinite}
+@keyframes wave{to{transform:translateX(-50%)}}
+.boot-stage::after{content:"";position:absolute;left:0;right:0;bottom:44px;height:3px;background:repeating-linear-gradient(90deg,#fbf6ea 0 22px,transparent 22px 36px);opacity:.8;animation:wave 2.4s linear infinite;width:200%}
+.boot-splash{position:absolute;bottom:46px;width:46px;height:20px;border-radius:50%;border:3px solid #fbf6ea;opacity:0}
+.boot-splash.s1{left:28px;animation:splash 2.4s ease-out infinite .4s}.boot-splash.s2{left:166px;animation:splash 2.4s ease-out infinite 1.85s}
+@keyframes splash{0%{opacity:.95;transform:scale(.3)}40%{opacity:0;transform:scale(1.5)}100%{opacity:0}}
+.boot-title{font-size:26px;font-weight:900;color:#2e3f3c;letter-spacing:.02em}
+.boot-bar{width:180px;height:10px;border-radius:6px;background:#d8cdb3;overflow:hidden;box-shadow:inset 0 1px 0 rgba(60,50,30,.15)}
+.boot-bar b{display:block;height:100%;width:8%;background:#c4562d;border-radius:6px;transition:width .3s}
+.boot-tip{min-height:22px;font-size:14px;font-weight:700;color:#5d6c66;padding:0 24px;text-align:center;transition:opacity .3s}
+@media (prefers-reduced-motion:reduce){.boot-jt{animation:none;transform:translate(0,-20px)}.boot-wave,.boot-stage::after{animation:none}.boot-splash{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div id="app">
  <canvas id="c"></canvas>
- <div id="boot" class="layer" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#e7dcc3;z-index:30"><div style="font-size:30px;font-weight:900;color:#2e3f3c">江豚，原来是这样！</div><div style="font-size:14px;font-weight:700;color:#6d7c77">正在游进来……</div></div>
+ <div id="boot" class="layer boot" aria-label="正在加载">
+  <div class="boot-stage" aria-hidden="true">
+   <img class="boot-jt" src="data:image/webp;base64,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" alt="">
+   <i class="boot-splash s1"></i><i class="boot-splash s2"></i>
+   <svg class="boot-wave" viewBox="0 0 400 40" preserveAspectRatio="none"><path d="M0 14 Q 25 4 50 14 T 100 14 T 150 14 T 200 14 T 250 14 T 300 14 T 350 14 T 400 14 V40 H0Z"/></svg>
+  </div>
+  <div class="boot-title">江豚，原来是这样！</div>
+  <div class="boot-bar"><b id="bootBar"></b></div>
+  <div class="boot-tip" id="bootTip">小江豚正在游进来……</div>
+ </div>
  <div id="wait" class="paper hidden" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 20px;font-size:15px;font-weight:800;z-index:25">插画还在路上，稍等一下……</div>
 
  <!-- shared HUD -->
@@ -208,7 +234,9 @@ const $=s=>document.querySelector(s),app=$('#app'),cv=$('#c'),ctx=cv.getContext(
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const img={};
 const LOADING={};
-function loadKeys(keys){return Promise.all(keys.map(k=>LOADING[k]||(LOADING[k]=new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=A[k];img[k]=i}))))}
+function loadKeys(keys,onEach){let n=0;return Promise.all(keys.map(k=>(LOADING[k]||(LOADING[k]=new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=A[k];img[k]=i}))).then(()=>{n++;onEach&&onEach(n/keys.length)})))}
+const BOOT_TIPS=['你知道吗？江豚是鲸，不是鱼','江豚宝宝出生，常常是尾巴先出来','江豚靠声音“看”世界','江豚妈妈要怀将近一年','2022年，整条长江只数到1249头江豚'];
+let bootTipI=0;const bootTipTimer=setInterval(()=>{const el=document.getElementById('bootTip');if(!el){clearInterval(bootTipTimer);return}el.style.opacity=0;setTimeout(()=>{el.textContent=BOOT_TIPS[bootTipI++%BOOT_TIPS.length];el.style.opacity=1},300)},2200);
 const FIRST=['bg','calfFront','calf'];let allReady=false,allPromise=null;
 let W=0,H=0,DPR=1;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=app.clientWidth;H=app.clientHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);if(scene&&scene.layout)scene.layout()}
@@ -619,7 +647,7 @@ LEVELS.forEach(l=>l.ready=true);
 
 /* ================= boot ================= */
 updateCount();
-loadKeys(FIRST).then(()=>{document.getElementById('boot').remove();resize();allPromise=loadKeys(Object.keys(A)).then(()=>{allReady=true});route();requestAnimationFrame(loop)});
+loadKeys(FIRST,p=>{const b=document.getElementById('bootBar');if(b)b.style.width=Math.max(8,p*100)+'%'}).then(()=>{const bt=document.getElementById('boot');bt.classList.add('out');setTimeout(()=>bt.remove(),500);clearInterval(bootTipTimer);resize();allPromise=loadKeys(Object.keys(A)).then(()=>{allReady=true});route();requestAnimationFrame(loop)});
 </script>
 </body>
 </html>
