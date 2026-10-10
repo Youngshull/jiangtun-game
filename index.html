@@ -11,6 +11,8 @@ html,body{height:100%;background:#cfc5ae;overflow:hidden;font-family:"PingFang S
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 #app{position:relative;margin:0 auto;height:100%;max-width:520px;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;background:#d9cfb8}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* the game handles every touch itself, so the browser must not turn drags into page scrolling */
+#c,.layer{touch-action:none}
 .layer{position:absolute;inset:0}
 .hidden{display:none!important}
 /* paper pieces */
@@ -314,7 +316,7 @@ const cw0=()=>Math.min(W*0.4,210);
 SCENES.L3={enter(){hud.classList.remove('hidden');$('#badgeSmall').textContent='第 3 关';$('#badgeTitle').textContent='第一次冒出江面';
   this.calf={x:W*0.3,dir:1,state:'swim',leaps:0};this.mom={x:W*0.6,next:2.5,up:0,ut:0};this.found=new Set(save.secrets.filter(i=>i>=9&&i<=11));
   this.bubbles=[9,10,11].filter(id=>!this.found.has(id)).map((id,k)=>({id,x:0,y:0,k,got:false}));this.placeBubbles();this.finished=false;
-  setDots(3,0);setHint('<span>👆</span>点水面上方，往那里跳！')},
+  this.goal=this.bubbles.length||3;setDots(this.goal,0);setHint('<span>👆</span>点发光的泡泡，江豚就跳过去！')},
  layout(){this.placeBubbles&&this.placeBubbles()},
  placeBubbles(){if(!this.bubbles)return;this.bubbles.forEach((b,i)=>{b.x=W*(0.22+0.28*i);b.y=H*0.70-H*(0.10+0.05*((i+1)%3))})},
  tap(x,y){const c=this.calf;if(c.state!=='swim'||this.finished)return;c.state='leap';c.t0=last;c.lx=c.x;
@@ -325,7 +327,7 @@ SCENES.L3={enter(){hud.classList.remove('hidden');$('#badgeSmall').textContent='
   const M=img.mountain,MB=H*0.555,mh=Math.min(H*0.36,W*0.78),mw=mh*M.width/M.height,mx=W-mw*0.9+(reduce?0:Math.sin(t*.3)*1.5);paper(()=>ctx.drawImage(M,mx,MB-mh,mw,mh));
   ctx.save();ctx.strokeStyle='#f3ead2';ctx.lineCap='round';ctx.lineWidth=4;ctx.globalAlpha=.8;ctx.setLineDash([30,14]);ctx.lineDashOffset=-t*10;ctx.beginPath();for(let x=mx-10;x<=mx+mw+10;x+=8){const y=MB+Math.sin(x*.05+t*1.5)*1.8;x===mx-10?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();ctx.restore();
   // bubbles
-  for(const b of this.bubbles)if(!b.got)drawBubble(b.x+Math.sin(t*1.3+b.k)*6,b.y+Math.sin(t*1.9+b.k*2)*5,17,t);
+  const nb=this.bubbles.find(b=>!b.got);if(nb)drawBubble(nb.x+Math.sin(t*1.3+nb.k)*6,nb.y+Math.sin(t*1.9+nb.k*2)*5,17,t);
   // mother
   const m=this.mom;m.next-=dt;if(m.next<0&&!m.up){m.up=1;m.ut=0}if(m.up){m.ut+=dt;if(m.ut>3.6){m.up=0;m.next=3+Math.random()*2;m.blown=0}}
   const rise=m.up?Math.sin(Math.min(1,m.ut/3.6)*Math.PI):0,mw2=Math.min(W*0.66,340),mb=bent(img.mom,mw2,t*2.2,reduce?0:6);
@@ -337,9 +339,11 @@ SCENES.L3={enter(){hud.classList.remove('hidden');$('#badgeSmall').textContent='
   else{const u=Math.min(1,(last-c.t0)/1.15),x=c.lx+c.span*u,y=WY-c.peak*4*u*(1-u)+cw*0.05,dydu=-c.peak*4*(1-2*u),ang=Math.atan2(dydu,Math.abs(c.span))*0.75,cb=bent(img.calf,cw,t*5,reduce?0:3);
    drawPartial(cb,x-cw/2,y-cb.h/2,c.dir<0?-ang:ang,t,0.55,c.dir<0);c.x=x;
    const hx=x+c.dir*cw*0.4,hy=y-Math.sin(ang)*cw*0.4*(c.dir<0?-1:1);
-   for(const b of this.bubbles)if(!b.got&&Math.hypot(b.x-hx,b.y-hy)<48||(!b.got&&Math.hypot(b.x-x,b.y-y)<44)){b.got=true;if(unlock(b.id))toast(SECRETS.find(s=>s.id===b.id).t);for(let i=0;i<12;i++)parts.push({x:b.x,y:b.y,vx:(Math.random()-.5)*160,vy:-60-Math.random()*120,r:2+Math.random()*3,life:0,mist:1})}
-   if(u>=1){c.state='swim';splash(x,WY,18);c.leaps++;setDots(3,Math.min(3,c.leaps));c.x=Math.max(W*0.12,Math.min(W*0.88,c.x));
-    if(c.leaps===3)setTimeout(()=>this.finish(),500);else if(c.leaps<3)hint.style.opacity=1}}
+   const cb2=this.bubbles.find(b=>!b.got);if(cb2&&(Math.hypot(cb2.x-hx,cb2.y-hy)<48||Math.hypot(cb2.x-x,cb2.y-y)<44)){const b=cb2;b.got=true;const left=this.bubbles.filter(q=>!q.got).length;if(unlock(b.id))toast(SECRETS.find(s=>s.id===b.id).t+(left?`（还有 ${left} 个泡泡）`:''));setDots(this.goal,this.bubbles.length-left);for(let i=0;i<12;i++)parts.push({x:b.x,y:b.y,vx:(Math.random()-.5)*160,vy:-60-Math.random()*120,r:2+Math.random()*3,life:0,mist:1})}
+   if(u>=1){c.state='swim';splash(x,WY,18);c.leaps++;c.x=Math.max(W*0.12,Math.min(W*0.88,c.x));
+    // with bubbles: finish once all are eaten; on a replay without bubbles: after 3 leaps
+    const done=this.bubbles.length?this.bubbles.every(b=>b.got):c.leaps>=3;if(!this.bubbles.length)setDots(3,Math.min(3,c.leaps));
+    if(done)setTimeout(()=>this.finish(),500);else hint.style.opacity=1}}
   surfaceStrokes(t);fx(dt)},
  finish(){if(this.finished)return;this.finished=true;unlock(8);if(!save.done.includes(3)){save.done.push(3);persist()}
   const s=SECRETS.find(x=>x.id===8),left=this.bubbles.filter(b=>!b.got).length;
@@ -415,8 +419,11 @@ function drawSwimmer(s,t){const moving=Math.hypot(s.vx,s.vy);return sprite(s.im,
 function head(s){const k=s.w*0.42;return {x:s.x+Math.cos(s.ang)*k*(s.flip?-1:1),y:s.y+Math.sin(s.ang)*k*(s.flip?-1:1)}}
 // secret bubbles inside levels
 function makeBubbles(ids,spots){return ids.filter(id=>!save.secrets.includes(id)).map((id,i)=>({id,x:spots[i][0],y:spots[i][1],k:i,got:false,hidden:!!spots[i][2]}))}
-function updBubbles(list,s,t,radius=46){for(const b of list){if(b.got||b.hidden)continue;const bx=b.x+Math.sin(t*1.3+b.k)*6,by=b.y+Math.sin(t*1.9+b.k*2)*5;drawBubble(bx,by,17,t);
- const h=head(s);if(Math.hypot(bx-h.x,by-h.y)<radius||Math.hypot(bx-s.x,by-s.y)<radius){b.got=true;if(unlock(b.id))toast(SECRETS.find(x=>x.id===b.id).t);riseBubbles(bx,by,10)}}}
+function updBubbles(list,s,t,radius=46){const b=list.find(x=>!x.got);if(!b||b.hidden)return false;const bx=b.x+Math.sin(t*1.3+b.k)*6,by=b.y+Math.sin(t*1.9+b.k*2)*5;drawBubble(bx,by,17,t);
+ const h=head(s);if(Math.hypot(bx-h.x,by-h.y)<radius||Math.hypot(bx-s.x,by-s.y)<radius){b.got=true;const left=list.filter(x=>!x.got).length;if(unlock(b.id))toast(SECRETS.find(x=>x.id===b.id).t+(left?`（还有 ${left} 个泡泡）`:''));riseBubbles(bx,by,10);return left===0}return false}
+// a level only finishes once every secret bubble in it has been eaten
+function gate(sc,fn){if(!sc.bubs||sc.bubs.every(b=>b.got)){fn();return}sc.pending=fn;const n=sc.bubs.filter(b=>!b.got).length;flash(`还有 ${n} 个秘密泡泡没吃到，吃完才能过关！`,2400);setHint('<span>✨</span>去吃掉发光的泡泡')}
+function afterBubble(sc){if(sc.pending&&sc.bubs.every(b=>b.got)){const f=sc.pending;sc.pending=null;setHint('');setTimeout(f,700)}}
 // breath system
 function breathTick(st,dt,s,surfaceY,rate=1/16){if(s.y<surfaceY+18){if(st.air<1&&st.air<0.98){st.air=Math.min(1,st.air+dt*1.4);if(!st.puffed){st.puffed=1;splash(s.x,surfaceY,8);riseBubbles(s.x,surfaceY+10,3)}}}else{st.puffed=0;st.air-=dt*rate}
  if(st.air<=0&&!st.helping){st.helping=true;flash('妈妈把你托上了水面：记得换气哦！',2200);s.tx=s.x;s.ty=surfaceY;s.lock=true;setTimeout(()=>{s.lock=false;st.helping=false},1600)}breath(st.air)}
@@ -439,8 +446,8 @@ SCENES.L1={enter(){startLevel(1,'出生');this.phase='ask';this.t0=0;this.mom={x
   if(this.phase==='born'){const u=Math.min(1,(last-this.t0)/2.2),e=1-Math.pow(1-u,2);b.x=rear.x-e*mw*0.32;b.y=rear.y+e*mw*0.18;b.flip=false;b.ang=-0.2*e;
    // tail first: baby slides out backwards (tail leading, to the left)
    sprite(b.im,b.x,b.y,b.w,{ang:b.ang,alpha:Math.min(1,u*3)});if(u>=1){this.phase='swim';b.tx=b.x;b.ty=b.y;flash(this.pick===1?'猜对了：尾巴先出来！':'其实常见的是尾巴先出来！',1800);setHint('<span>👆</span>按住拖动，快游上水面吸第一口气！')}}
-  else if(this.phase==='swim'){steer(b,dt,SY,H*0.88);breathTick(this.st,dt,b,SY,1/14);drawSwimmer(b,t);updBubbles(this.bubs,b,t);
-   if(b.y<SY+16&&!this.firstAir){this.firstAir=true;splash(b.x,SY,18);flash('噗——第一口气！',1400);setTimeout(()=>levelCard(1,2,'江豚宝宝出生，尾巴先出来更常见','和人类正好反过来。<b>不过2026年6月，水生所记录到一头头先出生的宝宝“小26”</b>，它一出生就自己游上水面换了第一口气——就像你刚才做的。'),1300)}}
+  else if(this.phase==='swim'){steer(b,dt,SY,H*0.88);breathTick(this.st,dt,b,SY,1/14);drawSwimmer(b,t);if(updBubbles(this.bubs,b,t))afterBubble(this);
+   if(b.y<SY+16&&!this.firstAir){this.firstAir=true;splash(b.x,SY,18);flash('噗——第一口气！',1400);setTimeout(()=>gate(this,()=>levelCard(1,2,'江豚宝宝出生，尾巴先出来更常见','和人类正好反过来。<b>不过2026年6月，水生所记录到一头头先出生的宝宝“小26”</b>，它一出生就自己游上水面换了第一口气——就像你刚才做的。')),1300)}}
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 2: nursing ===== */
@@ -453,14 +460,14 @@ SCENES.L2={enter(){startLevel(2,'喝奶');this.phase='find';this.c=swimmer(img.c
   sprite(img.mom,mx,my,mw,{ang:tilt,phase:t*2,amp:reduce?0:4});
   // nursing spot: underside of the REAR half of the belly (Xian et al. 2012 describe approach from below; position is schematic)
   const spot={x:mx-mw*0.12,y:my+mw*0.16};const c=this.c;
-  if(this.phase==='find'){steer(c,dt,SY,H*0.9);breathTick(this.st,dt,c,SY,1/22);drawSwimmer(c,t);updBubbles(this.bubs,c,t);
+  if(this.phase==='find'||this.phase==='roam'){steer(c,dt,SY,H*0.9);breathTick(this.st,dt,c,SY,1/22);drawSwimmer(c,t);if(updBubbles(this.bubs,c,t))afterBubble(this);
    const h=head(c),d=Math.hypot(h.x-spot.x,h.y-spot.y);
-   if(d<44){this.phase='drink';c.lock=true;setHint('<span>👆</span>按住屏幕喝奶！');flash('妈妈侧过身来了',1200)}
+   if(this.phase==='find'&&d<44){this.phase='drink';c.lock=true;setHint('<span>👆</span>按住屏幕喝奶！');flash('妈妈侧过身来了',1200)}
    else{const nearMom=Math.hypot(h.x-mx,h.y-my)<mw*0.45;if(nearMom&&h.y<my&&!this.hinted){this.hinted=true;flash('奶在下面——从妈妈肚子下方凑过去',2000)}
     if(nearMom&&h.x>mx+mw*0.15&&h.y>my&&!this.hint2){this.hint2=true;flash('再往后一点，靠近尾巴那边',2000)}}}
   else{c.x+=(spot.x-12-c.x)*Math.min(1,dt*6);c.y+=(spot.y+c.w*0.42-c.y)*Math.min(1,dt*6);sprite(img.calfUp,c.x,c.y,c.w*0.95,{ang:-0.25});
    if(this.phase==='drink'){if(this.holding||P.down)this.hold+=dt;holdRing(W/2,H*0.82,Math.min(1,this.hold/4.5),this.hold>0?Math.min(4.5,this.hold).toFixed(1)+'秒':'按住');
-    if(this.hold>=4.5){this.phase='done';flash('咕嘟！就这么一口！',1500);setTimeout(()=>levelCard(2,5,'喝一口奶，只要4–5秒！','宝宝从妈妈<b>肚子下方</b>凑过去，妈妈侧过身来配合。研究中两头幼豚每次吃奶平均只有4–5秒。','<p style="margin-top:6px;font-size:13px">画面是相对位置示意。4–5秒是单次平均，不是一整餐。</p>'),1200)}}}
+    if(this.hold>=4.5){this.phase='done';flash('咕嘟！就这么一口！',1500);setTimeout(()=>{if(this.bubs.some(b=>!b.got)){this.phase='roam';c.lock=false;c.tx=c.x;c.ty=c.y+60}},1300);setTimeout(()=>gate(this,()=>levelCard(2,5,'喝一口奶，只要4–5秒！','宝宝从妈妈<b>肚子下方</b>凑过去，妈妈侧过身来配合。研究中两头幼豚每次吃奶平均只有4–5秒。','<p style="margin-top:6px;font-size:13px">画面是相对位置示意。4–5秒是单次平均，不是一整餐。</p>')),1200)}}}
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 4: find fish with sound ===== */
@@ -478,9 +485,9 @@ SCENES.L4={enter(){startLevel(4,'找鱼',3);this.phase='ear';this.pings=[];this.
   for(const f of this.fish){if(f.gone)continue;f.x+=f.vx*dt;if(f.x<20||f.x>W-20)f.vx*=-1;f.lit=Math.max(0,f.lit-dt);
    sprite(f.im,f.x,f.y+Math.sin(t*2+f.x)*4,Math.min(W*0.2,90),{flip:f.vx<0,alpha:0.08+Math.min(1,f.lit)*0.92,shadow:f.lit>0})}
   ctx.fillStyle='rgba(30,36,20,.35)';ctx.fillRect(0,0,W,H);
-  steer(c,dt,H*0.12,H*0.92);drawSwimmer(c,t);drawPings(this.pings,last);updBubbles(this.bubs,c,t);
+  steer(c,dt,H*0.12,H*0.92);drawSwimmer(c,t);drawPings(this.pings,last);if(updBubbles(this.bubs,c,t))afterBubble(this);
   for(const f of this.fish){if(f.gone||f.lit<=0)continue;const h=head(c);if(Math.hypot(f.x-h.x,f.y-h.y)<40){f.gone=true;this.eaten++;riseBubbles(f.x,f.y,8);setDots(3,Math.min(3,this.eaten));flash('吃到一条！',800);
-   if(this.eaten===3)setTimeout(()=>levelCard(4,12,'它一直在“叫”，你一声也听不见','江豚用来看路、找鱼的<b>定位声平均约125千赫</b>，人耳最高只能听到约20千赫。在浑浊的长江里，它靠声音“看”世界——还靠<b>下巴里的一团脂肪</b>帮忙收声。'),900)}}
+   if(this.eaten===3)setTimeout(()=>gate(this,()=>levelCard(4,12,'它一直在“叫”，你一声也听不见','江豚用来看路、找鱼的<b>定位声平均约125千赫</b>，人耳最高只能听到约20千赫。在浑浊的长江里，它靠声音“看”世界——还靠<b>下巴里的一团脂肪</b>帮忙收声。')),900)}}
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 5: choose a friend ===== */
@@ -491,7 +498,7 @@ SCENES.L5={enter(){startLevel(5,'交朋友',3);this.phase='dive';this.sync=0;thi
  leave:leaveCommon,
  press(x,y){if(this.phase==='dive'){if(this.me.dive>0)return;this.me.dive=1;const b=this.friends[this.buddy];b.dive=1;this.sync++;setDots(3,Math.min(3,this.sync));hint.style.opacity=0;
    if(this.sync>=3){setTimeout(()=>{this.phase='pick';setHint('');flash('哪一头总跟你一起下潜？点它！',2000);this.friends.forEach((f,i)=>tag(f.x,f.y0-f.w*0.45,'是它？','pulse',()=>this.pick(i)))},1300)}}},
- pick(i){clearTags();if(i===this.buddy){this.friends[i].happy=1;setTimeout(()=>levelCard(5,15,'江豚会挑一起游的同伴','研究给6头野外江豚戴上记录器，发现<b>有两对总是更常同步潜水</b>——它们好像在挑朋友。而且这种“好朋友”不只是母子。'),700);unlock(16)}else{flash('不是它，再看看',1200);setTimeout(()=>{this.phase='dive';this.sync=2;setDots(3,2);setHint('<span>👆</span>再一起下潜一次，看准了')},900)}},
+ pick(i){clearTags();if(i===this.buddy){this.friends[i].happy=1;setTimeout(()=>gate(this,()=>levelCard(5,15,'江豚会挑一起游的同伴','研究给6头野外江豚戴上记录器，发现<b>有两对总是更常同步潜水</b>——它们好像在挑朋友。而且这种“好朋友”不只是母子。')),700);unlock(16)}else{flash('不是它，再看看',1200);setTimeout(()=>{this.phase='dive';this.sync=2;setDots(3,2);setHint('<span>👆</span>再一起下潜一次，看准了')},900)}},
  frame(t,dt){const SY=H*0.14;cover(img.uwClear);lightRays(t);surfaceLine(SY,t);
   for(const [i,f] of this.friends.entries()){if(i!==this.buddy){f.next-=dt;if(f.next<0&&!f.dive){f.dive=1;f.next=1.5+Math.random()*2.5}}
    if(f.dive){f.dive+=dt;if(f.dive>2.2)f.dive=0}const d=f.dive?Math.sin(Math.min(1,(f.dive-1)/1.2)*Math.PI)*H*0.16:0;
@@ -522,9 +529,9 @@ SCENES.L6={enter(){startLevel(6,'船来了',2);this.night=0;this.nightT=0;this.p
   for(const f of this.fish){if(f.gone)continue;f.x+=f.vx*dt;if(f.x<20||f.x>W-20)f.vx*=-1;f.lit=Math.max(0,f.lit-dt);sprite(f.im,f.x,f.y,Math.min(W*0.2,90),{flip:f.vx<0,alpha:0.08+Math.min(1,f.lit)*0.92,shadow:f.lit>0})}
   const c=this.c;steer(c,dt,SY+30,H*0.92);drawSwimmer(c,t);
   for(let i=this.pings.length-1;i>=0;i--){const p=this.pings[i];drawPings([p],last,p.jam);if(last-p.t0>1.4)this.pings.splice(i,1)}
-  updBubbles(this.bubs,c,t);
+  if(updBubbles(this.bubs,c,t))afterBubble(this);
   for(const f of this.fish){if(f.gone||f.lit<=0)continue;const h=head(c);if(Math.hypot(f.x-h.x,f.y-h.y)<40){f.gone=true;this.eaten++;setDots(2,Math.min(2,this.eaten));riseBubbles(f.x,f.y,8);flash('吃到了！',800);
-   if(this.eaten===2)setTimeout(()=>levelCard(6,17,'船太吵，江豚只好改吃“夜宵”','研究发现：白天船多、噪音大，江豚把觅食挪到了夜里；疫情期间船少了，白天的觅食又回来了。<br><b>船少一点、慢一点、静一点，它就能安心吃顿“午饭”。</b>'),900)}}
+   if(this.eaten===2)setTimeout(()=>gate(this,()=>levelCard(6,17,'船太吵，江豚只好改吃“夜宵”','研究发现：白天船多、噪音大，江豚把觅食挪到了夜里；疫情期间船少了，白天的觅食又回来了。<br><b>船少一点、慢一点、静一点，它就能安心吃顿“午饭”。</b>')),900)}}
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 7: heard by the recorder ===== */
@@ -536,36 +543,41 @@ SCENES.L7={enter(){startLevel(7,'被听见');this.bx=W*0.62;this.hy=H*0.36;this.
   g.innerHTML='<div class="eyebrow">水下录音机的日历</div><p style="font-size:13px;margin:4px 0 8px;color:#4c5c58">2020–2022年，一共 <b>834</b> 天</p><canvas width="600" height="300" style="position:static;inset:auto;width:100%;height:auto;display:block"></canvas><p id="g773" style="font-size:20px;font-weight:900;margin-top:8px">　</p>';app.appendChild(g);
   const c=g.querySelector('canvas'),x=c.getContext('2d'),cols=42,cell=600/cols,on=new Set();while(on.size<773)on.add(Math.floor(Math.random()*834));let k=0;
   const tick=()=>{for(let s=0;s<24&&k<834;s++,k++){const cx=(k%cols)*cell,cy=Math.floor(k/cols)*cell;x.fillStyle=on.has(k)?'#c4562d':'#d8d0bd';x.beginPath();x.arc(cx+cell/2,cy+cell/2,cell*0.38,0,7);x.fill()}
-   if(k<834)requestAnimationFrame(tick);else{document.getElementById('g773').innerHTML='其中 <span style="color:#c4562d">773</span> 天录到了江豚！';setTimeout(()=>{g.remove();unlock(20);levelCard(7,19,'你没看见它，但它可能刚刚来过','研究者在长江和鄱阳湖交汇口的航标上挂了水下录音机：<b>834天里，有773天录到了江豚的声音</b>。不过真正有江豚声音的时间，只占全部时长的3.8%——它们来去匆匆。','<p style="margin-top:6px;font-size:13px">这是2020–2022年一处监测点的记录，不代表今天一定能看到它。</p>')},2200)}};tick()},
+   if(k<834)requestAnimationFrame(tick);else{document.getElementById('g773').innerHTML='其中 <span style="color:#c4562d">773</span> 天录到了江豚！';setTimeout(()=>{g.remove();unlock(20);gate(this,()=>levelCard(7,19,'你没看见它，但它可能刚刚来过','研究者在长江和鄱阳湖交汇口的航标上挂了水下录音机：<b>834天里，有773天录到了江豚的声音</b>。不过真正有江豚声音的时间，只占全部时长的3.8%——它们来去匆匆。','<p style="margin-top:6px;font-size:13px">这是2020–2022年一处监测点的记录，不代表今天一定能看到它。</p>'))},2200)}};tick()},
  frame(t,dt){WY=H*0.30;const bgp=coverBg(img.bg,0.5,H*0.18,0.405);// underwater tint below the surface
   ctx.save();wavePath(t,true);ctx.clip();ctx.drawImage(img.uwMurky,0,WY-10,W,H-WY+10);ctx.fillStyle='rgba(60,70,40,.15)';ctx.fillRect(0,0,W,H);ctx.restore();
   this.bx=W*0.62;const bw=Math.min(W*0.26,110),bh=bw*img.buoy.height/img.buoy.width;this.hy=WY-bh*0.28+bh*0.5;
   sprite(img.buoy,this.bx,WY-bh*0.28+Math.sin(t*1.5)*3,bw,{ang:Math.sin(t*1.2)*0.04});
   if(this.heard&&last-this.heard<3){ctx.save();ctx.fillStyle=Math.floor(last*6)%2?'#e0442a':'#ffb199';ctx.beginPath();ctx.arc(this.bx+12,this.hy+bh*0.25,7,0,7);ctx.fill();ctx.restore()}
-  const c=this.c;steer(c,dt,WY,H*0.92);breathTick(this.st,dt,c,WY,1/20);const cb=bent(c.im,c.w,t*3,reduce?0:4);drawPartial(cb,c.x-cb.w/2,c.y-cb.h/2,c.ang,t,0.9,c.flip);drawPings(this.pings,last);updBubbles(this.bubs,c,t);surfaceStrokes(t);drawBubblesFx(dt);fx(dt)}};
+  const c=this.c;steer(c,dt,WY,H*0.92);breathTick(this.st,dt,c,WY,1/20);const cb=bent(c.im,c.w,t*3,reduce?0:4);drawPartial(cb,c.x-cb.w/2,c.y-cb.h/2,c.ang,t,0.9,c.flip);drawPings(this.pings,last);if(updBubbles(this.bubs,c,t))afterBubble(this);surfaceStrokes(t);drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 8: dry season maze ===== */
-SCENES.L8={enter(){startLevel(8,'枯水期');this.cam=0;this.state='go';this.c={x:0,y:0,tx:0,ty:0,flip:false};this.tries=0;
-  this.bubs=[23,24].filter(id=>!save.secrets.includes(id));this.layout();setHint('<span>👆</span>水越来越浅了！点一个深水的地方游过去<br><small style="font-weight:600">左右滑动看看全景</small>');},
- layout(){const im=img.lowwater;this.s=H/im.height;this.ww=im.width*this.s;
+SCENES.L8={enter(){startLevel(8,'枯水期');this.cam=0;this.manual=false;this.state='go';this.c={x:0,y:0,tx:0,ty:0,flip:false};
+  this.bubs=[23,24].filter(id=>!save.secrets.includes(id)).map((id,i)=>({id,u:0.36+i*0.4,got:false}));this.layout();
+  setHint('<span>👆</span>水越来越浅了！点一个深水的地方游过去<br><small style="font-weight:600">左右滑动，或点两边的箭头看全景</small>');},
+ layout(){const im=img.lowwater;this.s=H/im.height;this.ww=Math.max(W,im.width*this.s);
   // spots in image fractions: two dredged pits and the deep channel back to the river
   this.spots=[{u:.17,v:.63,kind:'pit'},{u:.58,v:.62,kind:'pit'},{u:.93,v:.55,kind:'exit'}];if(!this.c.x){this.c.x=this.ww*0.04;this.c.y=H*0.42;this.c.tx=this.c.x;this.c.ty=this.c.y}this.tagsUp()},
- tagsUp(){clearTags();for(const [i,sp] of this.spots.entries()){const b=tag(sp.u*this.ww-this.cam,sp.v*H,'深水？','pulse',()=>this.go(i));b.dataset.u=sp.u}
-  this.bubs.forEach((id,i)=>{tag((0.36+i*0.4)*this.ww-this.cam,H*0.40,'✨ 泡泡','',()=>{this.c.tx=(0.36+i*0.4)*this.ww;this.c.ty=H*0.42;this.pendingBubble=id})})},
- go(i){const sp=this.spots[i];this.c.tx=sp.u*this.ww;this.c.ty=sp.v*H;this.target=i;this.state='swim'},
+ tagsUp(){clearTags();for(const [i,sp] of this.spots.entries()){const b=tag(0,sp.v*H,'深水？','pulse',()=>this.go(i));b.dataset.wx=sp.u*this.ww}
+  const nb=this.bubs.find(x=>!x.got);if(nb){const b=tag(0,H*0.40,'✨ 秘密泡泡','pulse',()=>{this.c.tx=nb.u*this.ww;this.c.ty=H*0.42;this.state='bubble';this.manual=false});b.dataset.wx=nb.u*this.ww}
+  tag(26,H*0.5,'‹','',()=>this.pan(-1));tag(W-26,H*0.5,'›','',()=>this.pan(1));this.placeTags()},
+ placeTags(){for(const b of tags)if(b.dataset.wx)b.style.left=(+b.dataset.wx-this.cam)+'px'},
+ pan(d){this.manual=true;this.panTo=Math.max(0,Math.min(this.ww-W,this.cam+d*W*0.7))},
+ go(i){const sp=this.spots[i];this.c.tx=sp.u*this.ww;this.c.ty=sp.v*H;this.target=i;this.state='swim';this.manual=false},
  leave:leaveCommon,
  press(x){this.dragX=x;this.dragCam=this.cam},release(){this.dragX=null},
- frame(t,dt){if(P.down&&this.dragX!=null&&Math.abs(P.x-this.dragX)>8){this.cam=Math.max(0,Math.min(this.ww-W,this.dragCam-(P.x-this.dragX)))}
-  else if(!P.down){const want=Math.max(0,Math.min(this.ww-W,this.c.x-W*0.4));this.cam+=(want-this.cam)*Math.min(1,dt*2)}
-  ctx.drawImage(img.lowwater,-this.cam,0,this.ww,H);
-  tags.forEach((b,i)=>{const u=+b.dataset.u;if(b.dataset.u)b.style.left=(u*this.ww-this.cam)+'px';else{const j=i-this.spots.length;b.style.left=((0.36+j*0.4)*this.ww-this.cam)+'px'}});
+ frame(t,dt){if(P.down&&this.dragX!=null&&Math.abs(P.x-this.dragX)>6){this.manual=true;this.panTo=null;this.cam=Math.max(0,Math.min(this.ww-W,this.dragCam-(P.x-this.dragX)))}
+  else if(this.panTo!=null){this.cam+=(this.panTo-this.cam)*Math.min(1,dt*6);if(Math.abs(this.panTo-this.cam)<1)this.panTo=null}
+  else if(!this.manual){const want=Math.max(0,Math.min(this.ww-W,this.c.x-W*0.4));this.cam+=(want-this.cam)*Math.min(1,dt*2)}
+  ctx.drawImage(img.lowwater,-this.cam,0,this.ww,H);this.placeTags();
   const c=this.c,dx=c.tx-c.x,dy=c.ty-c.y,d=Math.hypot(dx,dy);if(d>3){c.x+=dx/d*Math.min(d,170*dt);c.y+=dy/d*Math.min(d,170*dt);c.flip=dx<0}
   const w=Math.min(W*0.3,130);sprite(img.calf,c.x-this.cam,c.y,w,{flip:c.flip,phase:t*3,amp:reduce?0:4,ang:Math.max(-.3,Math.min(.3,dy/(d+1)*.6))*(c.flip?-1:1)});
-  if(this.pendingBubble&&d<6){const id=this.pendingBubble;this.pendingBubble=null;if(unlock(id))toast(SECRETS.find(s=>s.id===id).t);this.bubs=this.bubs.filter(b=>b!==id);this.tagsUp()}
-  if(this.state==='swim'&&d<6){const sp=this.spots[this.target];if(sp.kind==='pit'){this.state='stuck';this.tries++;flash('糟糕，困住了！坑四周都是沙脊，水太浅出不去',2200);
+  const nb=this.bubs.find(x=>!x.got);if(nb){drawBubble(nb.u*this.ww-this.cam,H*0.40+Math.sin(t*1.8)*5,17,t)}
+  if(this.state==='bubble'&&d<6&&nb){nb.got=true;this.state='go';const left=this.bubs.filter(x=>!x.got).length;if(unlock(nb.id))toast(SECRETS.find(s=>s.id===nb.id).t+(left?`（还有 ${left} 个泡泡）`:''));riseBubbles(c.x-this.cam,c.y,10);this.tagsUp();afterBubble(this)}
+  if(this.state==='swim'&&d<6){const sp=this.spots[this.target];if(sp.kind==='pit'){this.state='stuck';flash('糟糕，困住了！坑四周都是沙脊，水太浅出不去',2200);
     setTimeout(()=>{c.tx=c.x-60;c.ty=H*0.42;this.state='go';flash('使劲扭身子，好不容易才游出来',1500)},2300)}
-   else{this.state='out';clearTags();flash('找到深水道了！回到大江！',1500);setTimeout(()=>levelCard(8,22,'明明还有一汪深水，江豚却可能被困住','采砂留下的<b>深坑和沙脊</b>，加上<b>极端枯水</b>，会让江豚更容易搁浅——坑里看着有水，四周却出不去。'),1300)}}
-  fx(dt)}};
+   else{this.state='out';flash('找到深水道了！',1300);setTimeout(()=>gate(this,()=>{clearTags();levelCard(8,22,'明明还有一汪深水，江豚却可能被困住','采砂留下的<b>深坑和沙脊</b>，加上<b>极端枯水</b>，会让江豚更容易搁浅——坑里看着有水，四周却出不去。')}),1200)}}
+  drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 9: becoming a mother ===== */
 const SEASONS=[['春','#f3c6c6'],['夏','#f6e3a1'],['秋','#e0a36d'],['冬','#e9eef2']];
@@ -590,7 +602,7 @@ SCENES.L9={enter(){startLevel(9,'当妈妈');this.phase='ask';this.p=0;this.scan
    ctx.globalAlpha=k*0.85;ctx.translate(bx+52,by+38);ctx.rotate(0.6);ctx.drawImage(img.newborn,-34,-20,68,40);ctx.restore();
    ctx.save();ctx.font='700 10px system-ui';ctx.fillStyle='#fbf6ea';ctx.fillText('B超示意',bx+8,by+68);ctx.restore()}
   if(this.phase==='birth'){const u=Math.min(1,(last-this.bt)/2.4),rear={x:mx-mw*0.08,y:my+mw*0.12},e=1-Math.pow(1-u,2);sprite(img.newborn,rear.x-e*mw*0.32,rear.y+e*mw*0.15,Math.min(W*0.26,120),{ang:-0.2*e,alpha:Math.min(1,u*3)});
-   if(u>=1&&!this.done){this.done=1;unlock(28);setTimeout(()=>levelCard(9,25,'江豚妈妈：“十月怀胎”？不够，要将近一年！','怀一胎，要熬过整整一轮春夏秋冬。在人工照养的江豚那里，研究人员还会给孕妈<b>做B超</b>，量宝宝的胸围和身长，甚至从<b>便便</b>里检测激素。<br>宝宝出生了——尾巴先出来。新的一生，又从第1关开始。','<p style="margin-top:6px;font-size:13px">B超画面是示意，不是真实影像；野生江豚并不会做产检。</p>'),900)}}
+   if(u>=1&&!this.done){this.done=1;unlock(28);setTimeout(()=>gate(this,()=>levelCard(9,25,'江豚妈妈：“十月怀胎”？不够，要将近一年！','怀一胎，要熬过整整一轮春夏秋冬。在人工照养的江豚那里，研究人员还会给孕妈<b>做B超</b>，量宝宝的胸围和身长，甚至从<b>便便</b>里检测激素。<br>宝宝出生了——尾巴先出来。新的一生，又从第1关开始。','<p style="margin-top:6px;font-size:13px">B超画面是示意，不是真实影像；野生江豚并不会做产检。</p>')),900)}}
   drawBubblesFx(dt);fx(dt)}};
 
 LEVELS.forEach(l=>l.ready=true);
