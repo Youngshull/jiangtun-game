@@ -63,6 +63,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .reveal h2{font-size:26px;font-weight:900;line-height:1.3}
 .reveal p{font-size:15px;line-height:1.7;margin-top:8px;color:#4c5c58}
 .reveal .btn{margin-top:14px;width:100%}
+.reveal .tapnote{margin-top:10px;font-size:13px;font-weight:800;color:var(--accent)}
 /* map */
 .map-title{position:absolute;left:18px;top:max(16px,env(safe-area-inset-top));z-index:3}
 .map-title small{font-size:12px;color:var(--muted);font-weight:700}
@@ -148,14 +149,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
  <!-- opening -->
  <div class="layer opening hidden" id="opening">
   <div class="q">江豚能吃吗？<br>好吃吗？</div>
-  <div class="sub">先猜猜：它是鱼，还是鲸？</div>
-  <div class="choices" id="openChoices"><button class="btn big light" data-pick="fish">🐟 鱼</button><button class="btn big" data-pick="whale">🐋 鲸</button></div>
-  <div class="paper reveal hidden" id="openReveal">
-   <div class="eyebrow" id="openFeedback"></div>
-   <h2>它是鲸！<br>用肺呼吸，喝奶长大。</h2>
-   <p>至于好不好吃——<b>先当一回江豚，你就知道答案了。</b></p>
-   <button class="btn big" id="becomeBtn">变成一头江豚 →</button>
-  </div>
+  <div class="sub" id="openSub">先猜一个：江豚是鱼吗？</div>
+  <div class="choices" id="openChoices"><button class="btn big" data-pick="yes">是</button><button class="btn big light" data-pick="no">不是</button></div>
+  <div class="paper reveal hidden" id="openReveal" aria-live="polite"></div>
  </div>
 
  <!-- map -->
@@ -238,7 +234,7 @@ const LOADING={};
 function loadKeys(keys,onEach){let n=0;return Promise.all(keys.map(k=>(LOADING[k]||(LOADING[k]=new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=A[k];img[k]=i}))).then(()=>{n++;onEach&&onEach(n/keys.length)})))}
 const BOOT_TIPS=['你知道吗？江豚是鲸，不是鱼','江豚宝宝出生，常常是尾巴先出来','江豚靠声音“看”世界','江豚妈妈要怀将近一年','2022年，整条长江只数到1249头江豚'];
 let bootTipI=0;const bootTipTimer=setInterval(()=>{const el=document.getElementById('bootTip');if(!el){clearInterval(bootTipTimer);return}el.style.opacity=0;setTimeout(()=>{el.textContent=BOOT_TIPS[bootTipI++%BOOT_TIPS.length];el.style.opacity=1},300)},2200);
-const FIRST=['bg','calfFront','calf'];let allReady=false,allPromise=null;
+const FIRST=['bg','calfFront','calf','mom','blueWhale'];let allReady=false,allPromise=null;
 let W=0,H=0,DPR=1;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=app.clientWidth;H=app.clientHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);if(scene&&scene.layout)scene.layout()}
 addEventListener('resize',resize);
@@ -311,15 +307,32 @@ function whale(x,y,s,alpha){ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);
 
 const SCENES={};
 /* ---------- opening ---------- */
-SCENES.opening={enter(){show('#opening',true);$('#openChoices').classList.remove('hidden');$('#openReveal').classList.add('hidden');this.rev=0;this.rt=0;save.opened=true;persist()},
- frame(t,dt){WY=H*0.62;const bgr=coverBg(img.bg,0.5,H*0.40,0.405);
-  if(this.rev){this.rt+=dt;const k=Math.min(1,this.rt/1.6),e=1-Math.pow(1-k,3);whale(W*0.5,WY+60-e*78,Math.min(W/640,0.72),e);
-   ctx.save();wavePath(t,true);ctx.clip();ctx.globalAlpha=0.45;ctx.drawImage(img.bg,bgr.x,bgr.y,bgr.dw,bgr.dh);ctx.restore()}
-  const fw=Math.min(W*0.62,300),fb={c:img.calfFront,w:fw,h:fw*img.calfFront.height/img.calfFront.width};
-  const y=WY-fb.h*0.62+Math.sin(t*1.6)*5;drawPartial(fb,W*0.5-fw/2+Math.sin(t*.7)*8,y,Math.sin(t*1.1)*0.03,t,0.55,false);surfaceStrokes(t);fx(dt)},
- pick(p){this.rev=1;this.rt=0;$('#openChoices').classList.add('hidden');$('#openFeedback').textContent=p==='whale'?'猜对了！':'很多人都这么猜——';$('#openReveal').classList.remove('hidden');splash(W*0.5,H*0.62,20);unlock(1)}};
+// 0 guess → 1 it's a whale → 2 whales are mammals → 3 so it breathes air at the surface → 4 become a porpoise
+const OPEN_STEPS=[null,
+ fb=>`<div class="eyebrow">${fb}</div><h2>不是！江豚是鲸！</h2><p>名字里带个“豚”，长得也像鱼，可它跟鱼根本不是一家。<b>地球上最大的动物——蓝鲸，是它的远房亲戚。</b></p><button class="btn" data-open-next>鲸又是什么？ →</button>`,
+ ()=>`<div class="eyebrow">原来是这样！</div><h2>鲸是哺乳动物，和我们一样喝奶长大</h2><p>江豚宝宝在妈妈肚子里长大，生下来以后，靠喝妈妈的奶长大。</p><button class="btn" data-open-next>那它在水里怎么呼吸？ →</button>`,
+ ()=>`<div class="eyebrow">所以……</div><h2>它没有鳃，得浮上水面换气</h2><p>鱼用鳃在水里呼吸；江豚用<b>肺</b>呼吸，隔一会儿就要浮到水面，用头顶的鼻孔换一口气。</p><div class="tapnote">👆 点一下画面，帮它浮上去换口气</div><button class="btn" data-open-next>知道了 →</button>`,
+ ()=>`<h2>至于好不好吃——</h2><p><b>先当一回江豚，你就知道答案了。</b>记得常常浮上水面换气哦。</p><button class="btn big" id="becomeBtn">变成一头江豚 →</button>`];
+SCENES.opening={enter(){show('#opening',true);$('#openChoices').classList.remove('hidden');$('#openSub').classList.remove('hidden');$('#openReveal').classList.add('hidden');this.step=0;this.rt=0;this.breathT=0;save.opened=true;persist()},
+ go(n,fb){this.step=n;this.rt=0;const el=$('#openReveal');el.innerHTML=OPEN_STEPS[n](fb);el.classList.remove('hidden');if(n===3)this.breathT=last+0.6},
+ tap(){if(this.step===3&&last-this.breathT>1.6)this.breathT=last},
+ frame(t,dt){const st=this.step;WY=st?H*0.47:H*0.60;const bgr=coverBg(img.bg,0.5,H*0.36,0.405);this.rt+=dt;const e=1-Math.pow(1-Math.min(1,this.rt/1.6),3);
+  const sub=()=>{ctx.save();wavePath(t,true);ctx.clip();ctx.globalAlpha=0.5;ctx.drawImage(img.bg,bgr.x,bgr.y,bgr.dw,bgr.dh);ctx.restore()};
+  if(st===0||st===1){
+   if(st===1){const bw=Math.min(W*1.15,560);sprite(img.blueWhale,W*0.5,WY+40-e*55,bw,{phase:t*1.2,amp:reduce?0:3,alpha:e});sub()}
+   const fw=Math.min(W*(st===1?0.42:0.62),st===1?200:300),fb={c:img.calfFront,w:fw,h:fw*img.calfFront.height/img.calfFront.width};
+   drawPartial(fb,W*0.5-fw/2+Math.sin(t*.7)*8,WY-fb.h*0.62+Math.sin(t*1.6)*5+(st===1?fb.h*0.25:0),Math.sin(t*1.1)*0.03,t,0.55,false)}
+  else if(st===2||st===4){const mw=Math.min(W*0.62,300),mb=bent(img.mom,mw,t*2.2,reduce?0:5);drawPartial(mb,W*0.04+Math.sin(t*.4)*8,WY-mb.h*0.5-mb.h*0.02,0,t,0.6);
+   const cw=Math.min(W*0.32,150),cb=bent(img.calf,cw,t*3.2,reduce?0:5);drawPartial(cb,W*0.58+Math.sin(t*.4+1)*8,WY-cb.h*0.5+cb.h*0.05+Math.sin(t*1.6)*3,0,t,0.6)}
+  else if(st===3){// the calf rises to breathe, then dives again; tap to make it breathe
+   if(last-this.breathT>4.5)this.breathT=last;const u=Math.min(1,(last-this.breathT)/1.8),rise=Math.sin(u*Math.PI);
+   const cw=Math.min(W*0.42,200),cb=bent(img.calf,cw,t*3,reduce?0:5);drawPartial(cb,W*0.5-cw/2,WY+cb.h*0.55-rise*cb.h*0.95,-0.15*Math.cos(u*Math.PI),t,0.7);
+   if(u>0.45&&u<0.55&&!this.puffed){this.puffed=1;splash(W*0.5+cw*0.25,WY,8);for(let i=0;i<14;i++)parts.push({x:W*0.5+cw*0.22,y:WY-6,vx:(Math.random()-.5)*70,vy:-140-Math.random()*110,r:2+Math.random()*3.5,life:0,mist:1})}
+   if(u>=1)this.puffed=0}
+  surfaceStrokes(t);fx(dt)},
+ pick(p){$('#openChoices').classList.add('hidden');$('#openSub').classList.add('hidden');this.go(1,p==='no'?'答对了！':'很多人都这么想——');splash(W*0.5,H*0.60,20);unlock(1)}};
 $('#openChoices').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(b)SCENES.opening.pick(b.dataset.pick)});
-$('#becomeBtn').onclick=()=>go('L1');
+$('#openReveal').addEventListener('click',e=>{if(e.target.closest('[data-open-next]'))SCENES.opening.go(SCENES.opening.step+1);if(e.target.closest('#becomeBtn'))go('L1')});
 
 /* ---------- map ---------- */
 SCENES.map={enter(){show('#map',true);const p=new URLSearchParams(location.search).get('place');$('#placeName').textContent=PLACES[p]||'湖口 · 认识江豚';this.layout()},
