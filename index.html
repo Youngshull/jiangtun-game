@@ -223,9 +223,10 @@ const SECRETS=[
 const PLACES={shizhongshan:'石钟山 · 认识江豚',boat:'游船上 · 认识江豚'};
 /* ================= storage ================= */
 const KEY='jiangtun-game-v2';
+// progress lives only in memory: every load or refresh starts from the opening
 let save={secrets:[],done:[],opened:false};
-try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.secrets))save=Object.assign(save,s)}catch(e){}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(save))}catch(e){}}
+try{localStorage.removeItem(KEY)}catch(e){}
+function persist(){}
 /* ================= canvas & assets ================= */
 const $=s=>document.querySelector(s),app=$('#app'),cv=$('#c'),ctx=cv.getContext('2d');
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -291,7 +292,7 @@ function show(id,on){$(id).classList.toggle('hidden',!on)}
 function go(name){location.hash=name}
 function route(){const h=(location.hash||'').slice(1);
  const needAll=h&&h!=='start'&&h!=='map';if(needAll&&!allReady&&allPromise){$('#wait').classList.remove('hidden');allPromise.then(()=>{$('#wait').classList.add('hidden');route()});return}hideCard();$('#book').classList.add('hidden');parts.length=0;rings.length=0;
- let s=SCENES.opening;if(h==='map')s=SCENES.map;else if(h==='end')s=SCENES.ending;else if(/^L\d$/.test(h)){const lv=LEVELS[+h[1]-1];s=lv&&lv.ready?SCENES['L'+lv.n]:SCENES.map}else if(h==='start'||!h)s=save.opened&&!h?SCENES.map:SCENES.opening;
+ let s=SCENES.opening;if(h==='map')s=SCENES.map;else if(h==='end')s=SCENES.ending;else if(/^L\d$/.test(h)){const lv=LEVELS[+h[1]-1];s=lv&&lv.ready?SCENES['L'+lv.n]:SCENES.map}else if(h==='start'||!h)s=SCENES.opening;
  if(scene&&scene.leave)scene.leave();scene=s;['#opening','#map','#ending'].forEach(id=>show(id,false));hud.classList.add('hidden');setHint('');setDots(0);scene.enter();}
 addEventListener('hashchange',route);
 function loop(ms){const t=ms/1000,dt=Math.min(.05,t-(last||t));last=t;ctx.clearRect(0,0,W,H);if(scene&&scene.frame)scene.frame(t,dt);requestAnimationFrame(loop)}
@@ -672,6 +673,7 @@ LEVELS.forEach(l=>l.ready=true);
 
 /* ================= boot ================= */
 updateCount();
+if(location.hash)history.replaceState(null,'',location.pathname+location.search);
 loadKeys(FIRST,p=>{const b=document.getElementById('bootBar');if(b)b.style.width=Math.max(8,p*100)+'%'}).then(()=>{const bt=document.getElementById('boot');bt.classList.add('out');setTimeout(()=>bt.remove(),500);clearInterval(bootTipTimer);resize();allPromise=loadKeys(Object.keys(A)).then(()=>{allReady=true});route();requestAnimationFrame(loop)});
 </script>
 </body>

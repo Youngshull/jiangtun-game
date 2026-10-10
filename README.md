@@ -4,6 +4,5 @@
 
 - 在线游玩：https://youngshull.github.io/jiangtun-game/
 - 场所版本：`?place=shizhongshan`（石钟山）、`?place=boat`（游船）
-- 直达关卡：在地址后加 `#L1` 到 `#L9`
 
-页面为单个 HTML 文件，不需要登录，不收集个人信息，进度只保存在游客自己的浏览器里。
+页面不需要登录，不收集个人信息，也不保存进度：每次打开或刷新都从开场开始。
