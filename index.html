@@ -552,31 +552,41 @@ SCENES.L7={enter(){startLevel(7,'被听见');this.bx=W*0.62;this.hy=H*0.36;this.
   const c=this.c;steer(c,dt,WY,H*0.92);breathTick(this.st,dt,c,WY,1/20);const cb=bent(c.im,c.w,t*3,reduce?0:4);drawPartial(cb,c.x-cb.w/2,c.y-cb.h/2,c.ang,t,0.9,c.flip);drawPings(this.pings,last);if(updBubbles(this.bubs,c,t))afterBubble(this);surfaceStrokes(t);drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 8: dry season maze ===== */
-SCENES.L8={enter(){startLevel(8,'枯水期');this.cam=0;this.manual=false;this.state='go';this.c={x:0,y:0,tx:0,ty:0,flip:false};
-  this.bubs=[23,24].filter(id=>!save.secrets.includes(id)).map((id,i)=>({id,u:0.36+i*0.4,got:false}));this.layout();
-  setHint('<span>👆</span>水越来越浅了！点一个深水的地方游过去<br><small style="font-weight:600">左右滑动，或点两边的箭头看全景</small>');},
- layout(){const im=img.lowwater;this.s=H/im.height;this.ww=Math.max(W,im.width*this.s);
-  // spots in image fractions: two dredged pits and the deep channel back to the river
-  this.spots=[{u:.17,v:.63,kind:'pit'},{u:.58,v:.62,kind:'pit'},{u:.93,v:.55,kind:'exit'}];if(!this.c.x){this.c.x=this.ww*0.04;this.c.y=H*0.42;this.c.tx=this.c.x;this.c.ty=this.c.y}this.tagsUp()},
- tagsUp(){clearTags();for(const [i,sp] of this.spots.entries()){const b=tag(0,sp.v*H,'深水？','pulse',()=>this.go(i));b.dataset.wx=sp.u*this.ww}
-  const nb=this.bubs.find(x=>!x.got);if(nb){const b=tag(0,H*0.40,'✨ 秘密泡泡','pulse',()=>{this.c.tx=nb.u*this.ww;this.c.ty=H*0.42;this.state='bubble';this.manual=false});b.dataset.wx=nb.u*this.ww}
-  tag(26,H*0.5,'‹','',()=>this.pan(-1));tag(W-26,H*0.5,'›','',()=>this.pan(1));this.placeTags()},
- placeTags(){for(const b of tags)if(b.dataset.wx)b.style.left=(+b.dataset.wx-this.cam)+'px'},
- pan(d){this.manual=true;this.panTo=Math.max(0,Math.min(this.ww-W,this.cam+d*W*0.7))},
- go(i){const sp=this.spots[i];this.c.tx=sp.u*this.ww;this.c.ty=sp.v*H;this.target=i;this.state='swim';this.manual=false},
+SCENES.L8={enter(){startLevel(8,'枯水期');this.t0=last;this.state='swim';this.taps=0;this.st={air:1};
+  this.c=swimmer(img.calf,W*0.08,H*0.30,Math.min(W*0.26,112));
+  this.bubs=makeBubbles([23,24],[[W*0.26,H*0.52],[W*0.60,H*0.55]]);
+  setHint('<span>👆</span>水越来越浅了！按住拖动，往右游回大江');},
  leave:leaveCommon,
- press(x){this.dragX=x;this.dragCam=this.cam},release(){this.dragX=null},
- frame(t,dt){if(P.down&&this.dragX!=null&&Math.abs(P.x-this.dragX)>6){this.manual=true;this.panTo=null;this.cam=Math.max(0,Math.min(this.ww-W,this.dragCam-(P.x-this.dragX)))}
-  else if(this.panTo!=null){this.cam+=(this.panTo-this.cam)*Math.min(1,dt*6);if(Math.abs(this.panTo-this.cam)<1)this.panTo=null}
-  else if(!this.manual){const want=Math.max(0,Math.min(this.ww-W,this.c.x-W*0.4));this.cam+=(want-this.cam)*Math.min(1,dt*2)}
-  ctx.drawImage(img.lowwater,-this.cam,0,this.ww,H);this.placeTags();
-  const c=this.c,dx=c.tx-c.x,dy=c.ty-c.y,d=Math.hypot(dx,dy);if(d>3){c.x+=dx/d*Math.min(d,170*dt);c.y+=dy/d*Math.min(d,170*dt);c.flip=dx<0}
-  const w=Math.min(W*0.3,130);sprite(img.calf,c.x-this.cam,c.y,w,{flip:c.flip,phase:t*3,amp:reduce?0:4,ang:Math.max(-.3,Math.min(.3,dy/(d+1)*.6))*(c.flip?-1:1)});
-  const nb=this.bubs.find(x=>!x.got);if(nb){drawBubble(nb.u*this.ww-this.cam,H*0.40+Math.sin(t*1.8)*5,17,t)}
-  if(this.state==='bubble'&&d<6&&nb){nb.got=true;this.state='go';const left=this.bubs.filter(x=>!x.got).length;if(unlock(nb.id))toast(SECRETS.find(s=>s.id===nb.id).t+(left?`（还有 ${left} 个泡泡）`:''));riseBubbles(c.x-this.cam,c.y,10);this.tagsUp();afterBubble(this)}
-  if(this.state==='swim'&&d<6){const sp=this.spots[this.target];if(sp.kind==='pit'){this.state='stuck';flash('糟糕，困住了！坑四周都是沙脊，水太浅出不去',2200);
-    setTimeout(()=>{c.tx=c.x-60;c.ty=H*0.42;this.state='go';flash('使劲扭身子，好不容易才游出来',1500)},2300)}
-   else{this.state='out';flash('找到深水道了！',1300);setTimeout(()=>gate(this,()=>{clearTags();levelCard(8,22,'明明还有一汪深水，江豚却可能被困住','采砂留下的<b>深坑和沙脊</b>，加上<b>极端枯水</b>，会让江豚更容易搁浅——坑里看着有水，四周却出不去。')}),1200)}}
+ // lake-bed profile: two sand ridges, two dredged pits, a deep channel on the right
+ bed(x){const g=(c,w)=>Math.exp(-Math.pow((x-c*W)/(w*W),2));const exit=Math.min(1,Math.max(0,(x-W*0.84)/(W*0.1)));
+  return H*0.74-H*0.20*g(0.36,0.13)-H*0.20*g(0.71,0.12)+H*0.12*g(0.17,0.07)+H*0.12*g(0.535,0.06)+H*0.12*exit},
+ surface(){return H*0.14+(H*0.40-H*0.14)*Math.min(1,(last-this.t0)/30)},
+ inPit(x,y){return [0.17,0.535].some(p=>Math.abs(x-p*W)<W*0.07)&&y>H*0.75},
+ press(){if(this.state!=='stuck')return;this.taps++;this.c.y-=6;riseBubbles(this.c.x,this.c.y,2);if(this.taps>=6){this.state='swim';this.c.lock=false;this.c.y=H*0.64;this.c.ty=H*0.45;this.c.tx=this.c.x+40;this.immune=last+1.5;setHint('<span>👆</span>按住拖动，往右游回大江');flash('使劲一扭，游出来了！',1300)}},
+ sandPattern(){if(this._sp)return this._sp;const cv2=document.createElement('canvas');cv2.width=cv2.height=260;const im=img.lowwater;cv2.getContext('2d').drawImage(im,im.width*0.30,im.height*0.80,im.width*0.14,im.height*0.15,0,0,260,260);return this._sp=ctx.createPattern(cv2,'repeat')},
+ frame(t,dt){const S=this.surface(),c=this.c;cover(img.uwClear);
+  // sky above the dropping water line
+  const g=ctx.createLinearGradient(0,0,0,S);g.addColorStop(0,'#cfc7e2');g.addColorStop(1,'#f6e7c4');ctx.fillStyle=g;ctx.fillRect(0,0,W,S);surfaceLine(S,t);
+  // deep channel glow on the right
+  const eg=ctx.createLinearGradient(W*0.8,0,W,0);eg.addColorStop(0,'rgba(30,70,55,0)');eg.addColorStop(1,'rgba(30,70,55,.45)');ctx.fillStyle=eg;ctx.fillRect(W*0.8,S,W*0.2,H-S);
+  // lake bed
+  ctx.save();ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=6)ctx.lineTo(x,this.bed(x));ctx.lineTo(W,H);ctx.closePath();ctx.fillStyle=this.sandPattern();ctx.shadowColor='rgba(55,45,25,.3)';ctx.shadowBlur=10;ctx.shadowOffsetY=-3;ctx.fill();
+  ctx.shadowColor='transparent';ctx.beginPath();for(let x=0;x<=W;x+=6){const y=this.bed(x);x?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.strokeStyle='#fbf6ea';ctx.lineWidth=5;ctx.stroke();ctx.restore();
+  // pits look tempting: darker water
+  ctx.save();for(const p of [0.17,0.535]){const px=p*W;ctx.fillStyle='rgba(20,60,50,.45)';ctx.beginPath();ctx.ellipse(px,H*0.82,W*0.07,H*0.05,0,0,7);ctx.fill();ctx.fillStyle='#fbf6ea';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillText('深水？',px,H*0.78)}ctx.restore();
+  ctx.save();ctx.fillStyle='#fbf6ea';ctx.font='900 14px system-ui';ctx.textAlign='right';ctx.fillText('大江 →',W-10,Math.max(S+30,H*0.62));ctx.restore();
+  // swimming
+  if(this.state==='swim'){steer(c,dt,S+8,H*0.97,220);const floor=this.bed(c.x)-c.w*0.18;
+   if(c.y>floor&&!this.inPit(c.x,c.y)){c.y=floor;c.vy=Math.min(0,c.vy)}
+   // blocked by a ridge that rises above the body: slide up toward the water surface
+   if(last<(this.immune||0)){c.lock=true;c.ty=H*0.45}else if(c.lock&&this.state==='swim')c.lock=false;
+   if(last>=(this.immune||0)&&this.inPit(c.x,c.y+c.w*0.1)){this.state='stuck';this.taps=0;c.lock=true;flash('掉进采砂坑了！四周沙脊太陡，出不去……',2000);setTimeout(()=>{if(this.state==='stuck')setHint('<span>👆</span>快速连点屏幕，扭着身子游出来！')},1600)}
+   breathTick(this.st,dt,c,S,1/20);
+   if(c.x>W*0.92&&this.state==='swim'){this.state='out';c.lock=true;flash('回到大江了！',1300);setTimeout(()=>gate(this,()=>levelCard(8,22,'明明还有一汪深水，江豚却可能被困住','采砂留下的<b>深坑和沙脊</b>，加上<b>极端枯水</b>，会让江豚更容易搁浅——坑里看着有水，四周却出不去。')),1100)}}
+  else if(this.state==='stuck'){const px=[0.17,0.535].reduce((a,p)=>Math.abs(c.x-p*W)<Math.abs(c.x-a)?p*W:a,9e9);c.x+=(px-c.x)*Math.min(1,dt*3);c.y=Math.min(H*0.83,c.y+dt*30);c.ang=Math.sin(t*8)*0.15}
+  else if(this.state==='out'){c.x+=80*dt}
+  if(this.state==='out'&&this.pending){c.lock=false;this.state='swim';c.x=W*0.86;c.tx=W*0.7;c.ty=c.y}
+  drawSwimmer(c,t);if(updBubbles(this.bubs,c,t))afterBubble(this);
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 9: becoming a mother ===== */
