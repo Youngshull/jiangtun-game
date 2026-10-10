@@ -456,8 +456,12 @@ function drawNextBubble(list,t){const b=list.find(x=>!x.got);if(!b||b.hidden)ret
 // for levels without swimming: tap the bubble itself
 function tapBubble(sc,x,y){const b=sc.bubs&&sc.bubs.find(q=>!q.got);if(!b||b.hidden)return false;const p=bubblePos(b,last);if(Math.hypot(p.x-x,p.y-y)>42)return false;if(collectBubble(sc.bubs,b,p.x,p.y))afterBubble(sc);return true}
 // a level only finishes once every secret bubble in it has been eaten
-function gate(sc,fn){if(!sc.bubs||sc.bubs.every(b=>b.got)){fn();return}sc.pending=fn;const n=sc.bubs.filter(b=>!b.got).length;flash(`还有 ${n} 个秘密泡泡没吃到，吃完才能过关！`,2400);setHint('<span>✨</span>去吃掉发光的泡泡')}
-function afterBubble(sc){if(sc.pending&&sc.bubs.every(b=>b.got)){const f=sc.pending;sc.pending=null;setHint('');setTimeout(f,700)}}
+const BUBBLE_HINT='<span>✨</span>先吃掉发光的泡泡';
+function bubblesDone(sc){return !sc.bubs||sc.bubs.every(b=>b.got)}
+// each level starts with its bubbles; the task (and its hint) appears only after the last one is eaten
+function startBubbles(sc,onDone){sc.onBubbles=onDone;if(bubblesDone(sc))onDone();else setHint(BUBBLE_HINT)}
+function gate(sc,fn){if(bubblesDone(sc))fn()}
+function afterBubble(sc){if(bubblesDone(sc)&&sc.onBubbles){const f=sc.onBubbles;sc.onBubbles=null;setTimeout(()=>{flash('秘密泡泡都吃完啦！',1100);f()},500)}}
 // breath system
 function breathTick(st,dt,s,surfaceY,rate=1/16){if(s.y<surfaceY+18){if(st.air<1&&st.air<0.98){st.air=Math.min(1,st.air+dt*1.4);if(!st.puffed){st.puffed=1;splash(s.x,surfaceY,8);riseBubbles(s.x,surfaceY+10,3)}}}else{st.puffed=0;st.air-=dt*rate}
  if(st.air<=0&&!st.helping){st.helping=true;flash('妈妈把你托上了水面：记得换气哦！',2200);s.tx=s.x;s.ty=surfaceY;s.lock=true;setTimeout(()=>{s.lock=false;st.helping=false},1600)}breath(st.air)}
@@ -479,14 +483,14 @@ SCENES.L1={enter(){startLevel(1,'出生');this.phase='ask';this.t0=0;this.mom={x
   const b=this.baby,rear={x:m.x-mw*0.08,y:m.y+mw*0.12};
   if(this.phase==='born'){const u=Math.min(1,(last-this.t0)/2.2),e=1-Math.pow(1-u,2);b.x=rear.x-e*mw*0.32;b.y=rear.y+e*mw*0.18;b.flip=false;b.ang=-0.2*e;
    // tail first: baby slides out backwards (tail leading, to the left)
-   sprite(b.im,b.x,b.y,b.w,{ang:b.ang,alpha:Math.min(1,u*3)});if(u>=1){this.phase='swim';b.tx=b.x;b.ty=b.y;flash(this.pick===1?'猜对了：尾巴先出来！':'其实常见的是尾巴先出来！',1800);setHint('<span>👆</span>按住拖动，快游上水面吸第一口气！')}}
+   sprite(b.im,b.x,b.y,b.w,{ang:b.ang,alpha:Math.min(1,u*3)});if(u>=1){this.phase='swim';b.tx=b.x;b.ty=b.y;flash(this.pick===1?'猜对了：尾巴先出来！':'其实常见的是尾巴先出来！',1800);startBubbles(this,()=>setHint('<span>👆</span>按住拖动，快游上水面吸第一口气！'))}}
   else if(this.phase==='swim'){steer(b,dt,SY,H*0.88);breathTick(this.st,dt,b,SY,1/14);drawSwimmer(b,t);if(updBubbles(this.bubs,b,t))afterBubble(this);
-   if(b.y<SY+16&&!this.firstAir){this.firstAir=true;splash(b.x,SY,18);flash('噗——第一口气！',1400);setTimeout(()=>gate(this,()=>levelCard(1,2,'江豚宝宝出生，尾巴先出来更常见','和人类正好反过来。<b>不过2026年6月，水生所记录到一头头先出生的宝宝“小26”</b>，它一出生就自己游上水面换了第一口气——就像你刚才做的。')),1300)}}
+   if(b.y<SY+16&&!this.firstAir&&bubblesDone(this)){this.firstAir=true;splash(b.x,SY,18);flash('噗——第一口气！',1400);setTimeout(()=>gate(this,()=>levelCard(1,2,'江豚宝宝出生，尾巴先出来更常见','和人类正好反过来。<b>不过2026年6月，水生所记录到一头头先出生的宝宝“小26”</b>，它一出生就自己游上水面换了第一口气——就像你刚才做的。')),1300)}}
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 2: nursing ===== */
 SCENES.L2={enter(){startLevel(2,'喝奶');this.phase='find';this.c=swimmer(img.calf,W*0.2,H*0.75,Math.min(W*0.3,140));this.st={air:1};this.hold=0;this.bad=0;
-  this.bubs=makeBubbles([6,7],[[W*0.15,H*0.35],[W*0.85,H*0.78]]);setHint('<span>👆</span>肚子饿了，游到妈妈身边找奶喝');},
+  this.bubs=makeBubbles([6,7],[[W*0.15,H*0.35],[W*0.85,H*0.78]]);startBubbles(this,()=>setHint('<span>👆</span>肚子饿了，游到妈妈身边找奶喝'));},
  leave:leaveCommon,
  press(){if(this.phase==='drink')this.holding=true},release(){this.holding=false},
  frame(t,dt){const SY=H*0.12;cover(img.uwClear);lightRays(t);surfaceLine(SY,t);
@@ -496,7 +500,7 @@ SCENES.L2={enter(){startLevel(2,'喝奶');this.phase='find';this.c=swimmer(img.c
   const spot={x:mx-mw*0.12,y:my+mw*0.16};const c=this.c;
   if(this.phase==='find'||this.phase==='roam'){steer(c,dt,SY,H*0.9);breathTick(this.st,dt,c,SY,1/22);drawSwimmer(c,t);if(updBubbles(this.bubs,c,t))afterBubble(this);
    const h=head(c),d=Math.hypot(h.x-spot.x,h.y-spot.y);
-   if(this.phase==='find'&&d<44){this.phase='drink';c.lock=true;setHint('<span>👆</span>按住屏幕喝奶！');flash('妈妈侧过身来了',1200)}
+   if(!bubblesDone(this)){}else if(this.phase==='find'&&d<44){this.phase='drink';c.lock=true;setHint('<span>👆</span>按住屏幕喝奶！');flash('妈妈侧过身来了',1200)}
    else{const nearMom=Math.hypot(h.x-mx,h.y-my)<mw*0.45;if(nearMom&&h.y<my&&!this.hinted){this.hinted=true;flash('奶在下面——从妈妈肚子下方凑过去',2000)}
     if(nearMom&&h.x>mx+mw*0.15&&h.y>my&&!this.hint2){this.hint2=true;flash('再往后一点，靠近尾巴那边',2000)}}}
   else{c.x+=(spot.x-12-c.x)*Math.min(1,dt*6);c.y+=(spot.y+c.w*0.42-c.y)*Math.min(1,dt*6);sprite(img.calfUp,c.x,c.y,c.w*0.95,{ang:-0.25});
@@ -507,11 +511,11 @@ SCENES.L2={enter(){startLevel(2,'喝奶');this.phase='find';this.c=swimmer(img.c
 /* ===== Level 4: find fish with sound ===== */
 SCENES.L4={enter(){startLevel(4,'找鱼',3);this.phase='ear';this.pings=[];this.eaten=0;this.c=swimmer(img.calf,W*0.5,H*0.5,Math.min(W*0.62,300));this.c.lock=true;
   const fi=[img.fishSilver,img.fishGold,img.fishStripe];this.fish=Array.from({length:5},(_,i)=>({im:fi[i%3],x:W*(0.15+Math.random()*0.7),y:H*(0.25+Math.random()*0.6),vx:(Math.random()<.5?-1:1)*(18+Math.random()*20),lit:0,gone:false}));
-  this.bubs=makeBubbles([14],[[W*0.78,H*0.30,true]]);setHint('');
+  this.bubs=makeBubbles([14],[[W*0.78,H*0.30]]);setHint('');
   ask('想找鱼，得先听清楚。<br>江豚靠哪里帮忙收声？',['头顶','眼睛后面','下巴'],i=>{if(i===2){this.jaw=last;unlock(13)&&toast(SECRETS.find(s=>s.id===13).t);this.goPlay()}else{flash('不对哦，再想想',1100);setTimeout(()=>this.enter(),900)}})},
- goPlay(){setTimeout(()=>{this.phase='play';this.c.w=Math.min(W*0.32,150);this.c.lock=false;setHint('<span>👆</span>点屏幕发出声波，找到鱼再游过去');tag(W-62,118,'🔇 人耳听不见','',()=>flash('它的定位声约125千赫，人耳最高约20千赫',2200))},1600)},
+ goPlay(){setTimeout(()=>{this.phase='play';this.c.w=Math.min(W*0.32,150);this.c.lock=false;startBubbles(this,()=>{setHint('<span>👆</span>点屏幕发出声波，找到鱼再游过去');tag(W-62,118,'🔇 人耳听不见','',()=>flash('它的定位声约125千赫，人耳最高约20千赫',2200))})},1600)},
  leave:leaveCommon,
- press(x,y){if(this.phase!=='play')return;const h=head(this.c);pingRing(this.pings,h.x,h.y,last);
+ press(x,y){if(this.phase!=='play'||!bubblesDone(this))return;const h=head(this.c);pingRing(this.pings,h.x,h.y,last);
   for(const f of this.fish)if(!f.gone&&Math.hypot(f.x-h.x,f.y-h.y)<Math.max(W,H)*0.5)f.lit=2.2;for(const b of this.bubs)b.hidden=false;hint.style.opacity=0},
  frame(t,dt){cover(img.uwMurky);const c=this.c;
   if(this.phase==='ear'){sprite(img.calf,c.x,c.y,c.w,{phase:t*2,amp:reduce?0:3});if(this.jaw){const k=Math.min(1,(last-this.jaw)/0.6);ctx.save();ctx.globalCompositeOperation='screen';const jx=c.x+c.w*0.28,jy=c.y+c.w*0.1,g=ctx.createRadialGradient(jx,jy,2,jx,jy,60);g.addColorStop(0,`rgba(255,230,150,${.9*k})`);g.addColorStop(1,'rgba(255,230,150,0)');ctx.fillStyle=g;ctx.fillRect(jx-70,jy-70,140,140);ctx.restore()}fx(dt);return}
@@ -528,9 +532,9 @@ SCENES.L4={enter(){startLevel(4,'找鱼',3);this.phase='ear';this.pings=[];this.
 SCENES.L5={enter(){startLevel(5,'交朋友',3);this.phase='dive';this.sync=0;this.me=swimmer(img.calf,W*0.5,H*0.32,Math.min(W*0.3,140));this.me.lock=true;
   const fr=[img.friendL,img.friend34L,img.friendL];this.buddy=Math.floor(Math.random()*3);
   this.friends=fr.map((im,i)=>({im,x:W*(0.22+i*0.28),y0:H*(0.55+(i%2)*0.12),dive:0,next:1+Math.random()*2,w:Math.min(W*0.3,150)}));
-  this.bubs=makeBubbles([16],[[W*0.78,H*0.30]]);setHint('<span>👆</span>点一下屏幕，一起下潜！发光的泡泡可以直接点');},
+  this.bubs=makeBubbles([16],[[W*0.78,H*0.30]]);startBubbles(this,()=>setHint('<span>👆</span>点一下屏幕，一起下潜！看看谁总跟你同时下潜'));},
  leave:leaveCommon,
- press(x,y){if(tapBubble(this,x,y))return;if(this.phase==='dive'){if(this.me.dive>0)return;this.me.dive=1;const b=this.friends[this.buddy];b.dive=1;this.sync++;setDots(3,Math.min(3,this.sync));hint.style.opacity=0;
+ press(x,y){if(tapBubble(this,x,y)||!bubblesDone(this))return;if(this.phase==='dive'){if(this.me.dive>0)return;this.me.dive=1;const b=this.friends[this.buddy];b.dive=1;this.sync++;setDots(3,Math.min(3,this.sync));hint.style.opacity=0;
    if(this.sync>=3){setTimeout(()=>{this.phase='pick';setHint('');flash('哪一头总跟你一起下潜？点它！',2000);this.friends.forEach((f,i)=>tag(f.x,f.y0-f.w*0.45,'是它？','pulse',()=>this.pick(i)))},1300)}}},
  pick(i){clearTags();if(i===this.buddy){this.friends[i].happy=1;setTimeout(()=>gate(this,()=>levelCard(5,15,'江豚会挑一起游的同伴','研究给6头野外江豚戴上记录器，发现<b>有两对总是更常同步潜水</b>——它们好像在挑朋友。而且这种“好朋友”不只是母子。')),700)}else{flash('不是它，再看看',1200);setTimeout(()=>{this.phase='dive';this.sync=2;setDots(3,2);setHint('<span>👆</span>再一起下潜一次，看准了')},900)}},
  frame(t,dt){const SY=H*0.14;cover(img.uwClear);lightRays(t);surfaceLine(SY,t);
@@ -546,9 +550,9 @@ SCENES.L5={enter(){startLevel(5,'交朋友',3);this.phase='dive';this.sync=0;thi
 SCENES.L6={enter(){startLevel(6,'船来了',2);this.night=0;this.nightT=0;this.pings=[];this.fails=0;this.eaten=0;this.c=swimmer(img.calf,W*0.3,H*0.6,Math.min(W*0.3,140));
   this.ships=[{im:img.cargo,x:W*1.2,v:-40,w:Math.min(W*0.9,420),flip:true},{im:img.tourboat,x:-W*0.3,v:55,w:Math.min(W*0.5,220),flip:false}];
   const fi=[img.fishSilver,img.fishGold];this.fish=[0,1,2].map(i=>({im:fi[i%2],x:W*(0.25+i*0.25),y:H*(0.5+i*0.1),vx:20*(i%2?1:-1),lit:0,gone:false}));
-  this.bubs=makeBubbles([18],[[W*0.75,H*0.45,true]]);setHint('<span>👆</span>白天，船来船往。点屏幕发声波找鱼');},
+  this.bubs=makeBubbles([18],[[W*0.75,H*0.45]]);startBubbles(this,()=>setHint('<span>👆</span>白天，船来船往。点屏幕发声波找鱼'));},
  leave:leaveCommon,
- press(){if(this.night<1&&this.nightT===0){const h=head(this.c);pingRing(this.pings,h.x,h.y,last);this.pings[this.pings.length-1].jam=1;this.fails++;flash('太吵了！声波被船的噪音盖住了',1400);
+ press(){if(!bubblesDone(this))return;if(this.night<1&&this.nightT===0){const h=head(this.c);pingRing(this.pings,h.x,h.y,last);this.pings[this.pings.length-1].jam=1;this.fails++;flash('太吵了！声波被船的噪音盖住了',1400);
    if(this.fails>=2&&!this.waitBtn){this.waitBtn=tag(W/2,H*0.86,'🌙 等天黑','pulse',()=>{this.nightT=last;clearTags();this.waitBtn=null;setHint('')})}return}
   if(this.night>=1){const h=head(this.c);pingRing(this.pings,h.x,h.y,last);for(const f of this.fish)if(!f.gone)f.lit=2.4;for(const b of this.bubs)b.hidden=false}},
  frame(t,dt){if(this.nightT){this.night=Math.min(1,(last-this.nightT)/2.5);if(this.night>=1&&!this.saidNight){this.saidNight=1;flash('天黑了，船停了，安静下来',1600);setHint('<span>👆</span>现在再试试发声波！')}}
@@ -570,9 +574,9 @@ SCENES.L6={enter(){startLevel(6,'船来了',2);this.night=0;this.nightT=0;this.p
 
 /* ===== Level 7: heard by the recorder ===== */
 SCENES.L7={enter(){startLevel(7,'被听见');this.bx=W*0.62;this.hy=H*0.36;this.pings=[];this.heard=0;this.c=swimmer(img.calf,W*0.25,H*0.62,Math.min(W*0.3,140));this.st={air:1};
-  this.bubs=makeBubbles([21],[[W*0.2,H*0.4]]);setHint('<span>👆</span>游到航标下面，发出声波打个招呼');},
+  this.bubs=makeBubbles([21],[[W*0.2,H*0.4]]);startBubbles(this,()=>setHint('<span>👆</span>游到航标下面，发出声波打个招呼'));},
  leave(){leaveCommon();const g=document.getElementById('grid834');g&&g.remove()},
- press(){const h=head(this.c);pingRing(this.pings,h.x,h.y,last);const hy={x:this.bx,y:this.hy};if(Math.hypot(h.x-hy.x,h.y-hy.y)<W*0.35&&!this.heard){this.heard=last;flash('🔴 录到你了！',1500);setTimeout(()=>this.grid(),1400)}},
+ press(){if(!bubblesDone(this))return;const h=head(this.c);pingRing(this.pings,h.x,h.y,last);const hy={x:this.bx,y:this.hy};if(Math.hypot(h.x-hy.x,h.y-hy.y)<W*0.35&&!this.heard){this.heard=last;flash('🔴 录到你了！',1500);setTimeout(()=>this.grid(),1400)}},
  grid(){const g=document.createElement('div');g.id='grid834';g.className='paper';g.style.cssText='position:absolute;left:14px;right:14px;top:96px;padding:14px;border-radius:18px;z-index:6;background:#fbf6ea';
   g.innerHTML='<div class="eyebrow">水下录音机的日历</div><p style="font-size:13px;margin:4px 0 8px;color:#4c5c58">2020–2022年，一共 <b>834</b> 天</p><canvas width="600" height="300" style="position:static;inset:auto;width:100%;height:auto;display:block"></canvas><p id="g773" style="font-size:20px;font-weight:900;margin-top:8px">　</p>';app.appendChild(g);
   const c=g.querySelector('canvas'),x=c.getContext('2d'),cols=42,cell=600/cols,on=new Set();while(on.size<773)on.add(Math.floor(Math.random()*834));let k=0;
@@ -589,14 +593,14 @@ SCENES.L7={enter(){startLevel(7,'被听见');this.bx=W*0.62;this.hy=H*0.36;this.
 SCENES.L8={enter(){startLevel(8,'枯水期');this.t0=last;this.state='swim';this.taps=0;this.st={air:1};
   this.c=swimmer(img.calf,W*0.08,H*0.30,Math.min(W*0.26,112));
   this.bubs=makeBubbles([23,24],[[W*0.26,H*0.52],[W*0.60,H*0.55]]);
-  setHint('<span>👆</span>水越来越浅了！按住拖动，往右游回大江');},
+  startBubbles(this,()=>setHint('<span>👆</span>水越来越浅了！按住拖动，往右游回大江'));},
  leave:leaveCommon,
  // lake-bed profile: two sand ridges, two dredged pits, a deep channel on the right
  bed(x){const g=(c,w)=>Math.exp(-Math.pow((x-c*W)/(w*W),2));const exit=Math.min(1,Math.max(0,(x-W*0.84)/(W*0.1)));
   return H*0.74-H*0.20*g(0.36,0.13)-H*0.20*g(0.71,0.12)+H*0.12*g(0.17,0.07)+H*0.12*g(0.535,0.06)+H*0.12*exit},
  surface(){return H*0.14+(H*0.40-H*0.14)*Math.min(1,(last-this.t0)/30)},
  inPit(x,y){return [0.17,0.535].some(p=>Math.abs(x-p*W)<W*0.07)&&y>H*0.75},
- press(){if(this.state!=='stuck')return;this.taps++;this.c.y-=6;riseBubbles(this.c.x,this.c.y,2);if(this.taps>=6){this.state='swim';this.c.lock=false;this.c.y=H*0.64;this.c.ty=H*0.45;this.c.tx=this.c.x+40;this.immune=last+1.5;setHint('<span>👆</span>按住拖动，往右游回大江');flash('使劲一扭，游出来了！',1300)}},
+ press(){if(this.state!=='stuck')return;this.taps++;this.c.y-=6;riseBubbles(this.c.x,this.c.y,2);if(this.taps>=6){this.state='swim';this.c.lock=false;this.c.y=H*0.64;this.c.ty=H*0.45;this.c.tx=this.c.x+40;this.immune=last+1.5;setHint(bubblesDone(this)?'<span>👆</span>按住拖动，往右游回大江':BUBBLE_HINT);flash('使劲一扭，游出来了！',1300)}},
  sandPattern(){if(this._sp)return this._sp;const cv2=document.createElement('canvas');cv2.width=cv2.height=260;const im=img.lowwater;cv2.getContext('2d').drawImage(im,im.width*0.30,im.height*0.80,im.width*0.14,im.height*0.15,0,0,260,260);return this._sp=ctx.createPattern(cv2,'repeat')},
  frame(t,dt){const S=this.surface(),c=this.c;cover(img.uwClear);
   // sky above the dropping water line
@@ -608,7 +612,7 @@ SCENES.L8={enter(){startLevel(8,'枯水期');this.t0=last;this.state='swim';this
   ctx.shadowColor='transparent';ctx.beginPath();for(let x=0;x<=W;x+=6){const y=this.bed(x);x?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.strokeStyle='#fbf6ea';ctx.lineWidth=5;ctx.stroke();ctx.restore();
   // pits look tempting: darker water
   ctx.save();for(const p of [0.17,0.535]){const px=p*W;ctx.fillStyle='rgba(20,60,50,.45)';ctx.beginPath();ctx.ellipse(px,H*0.82,W*0.07,H*0.05,0,0,7);ctx.fill();ctx.fillStyle='#fbf6ea';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillText('深水？',px,H*0.78)}ctx.restore();
-  ctx.save();ctx.fillStyle='#fbf6ea';ctx.font='900 14px system-ui';ctx.textAlign='right';ctx.fillText('大江 →',W-10,Math.max(S+30,H*0.62));ctx.restore();
+  if(bubblesDone(this)){ctx.save();ctx.fillStyle='#fbf6ea';ctx.font='900 14px system-ui';ctx.textAlign='right';ctx.fillText('大江 →',W-10,Math.max(S+30,H*0.62));ctx.restore()}
   // swimming
   if(this.state==='swim'){steer(c,dt,S+8,H*0.97,220);const floor=this.bed(c.x)-c.w*0.18;
    if(c.y>floor&&!this.inPit(c.x,c.y)){c.y=floor;c.vy=Math.min(0,c.vy)}
@@ -616,32 +620,30 @@ SCENES.L8={enter(){startLevel(8,'枯水期');this.t0=last;this.state='swim';this
    if(last<(this.immune||0)){c.lock=true;c.ty=H*0.45}else if(c.lock&&this.state==='swim')c.lock=false;
    if(last>=(this.immune||0)&&this.inPit(c.x,c.y+c.w*0.1)){this.state='stuck';this.taps=0;c.lock=true;flash('掉进采砂坑了！四周沙脊太陡，出不去……',2000);setTimeout(()=>{if(this.state==='stuck')setHint('<span>👆</span>快速连点屏幕，扭着身子游出来！')},1600)}
    breathTick(this.st,dt,c,S,1/20);
-   if(c.x>W*0.92&&this.state==='swim'){this.state='out';c.lock=true;flash('回到大江了！',1300);setTimeout(()=>gate(this,()=>levelCard(8,22,'明明还有一汪深水，江豚却可能被困住','采砂留下的<b>深坑和沙脊</b>，加上<b>极端枯水</b>，会让江豚更容易搁浅——坑里看着有水，四周却出不去。')),1100)}}
+   if(c.x>W*0.92&&this.state==='swim'&&bubblesDone(this)){this.state='out';c.lock=true;flash('回到大江了！',1300);setTimeout(()=>gate(this,()=>levelCard(8,22,'明明还有一汪深水，江豚却可能被困住','采砂留下的<b>深坑和沙脊</b>，加上<b>极端枯水</b>，会让江豚更容易搁浅——坑里看着有水，四周却出不去。')),1100)}}
   else if(this.state==='stuck'){const px=[0.17,0.535].reduce((a,p)=>Math.abs(c.x-p*W)<Math.abs(c.x-a)?p*W:a,9e9);c.x+=(px-c.x)*Math.min(1,dt*3);c.y=Math.min(H*0.83,c.y+dt*30);c.ang=Math.sin(t*8)*0.15}
   else if(this.state==='out'){c.x+=80*dt}
-  if(this.state==='out'&&this.pending){c.lock=false;this.state='swim';c.x=W*0.86;c.tx=W*0.7;c.ty=c.y}
   drawSwimmer(c,t);if(updBubbles(this.bubs,c,t))afterBubble(this);
   drawBubblesFx(dt);fx(dt)}};
 
 /* ===== Level 9: becoming a mother ===== */
 const SEASONS=[['春','#f3c6c6'],['夏','#f6e3a1'],['秋','#e0a36d'],['冬','#e9eef2']];
 SCENES.L9={enter(){startLevel(9,'当妈妈');this.phase='ask';this.p=0;this.scanned=false;this.flakes=[];setHint('');this.waitNote=false;
-  this.bubs=makeBubbles([26,27,28],[[W*0.20,H*0.30,1],[W*0.80,H*0.66,1],[W*0.22,H*0.70,1]]);
-  ask('你长大了，怀上了宝宝！<br>要怀多久？',['半年','十个月','将近一年'],i=>{flash(i===2?'猜对了！':'还要更久——将近一年',1600);this.phase='hold';setHint('<span>👆</span>按住屏幕，陪她熬过四季')})},
+  this.bubs=makeBubbles([26,27,28],[[W*0.20,H*0.30],[W*0.80,H*0.66],[W*0.22,H*0.70]]);
+  ask('你长大了，怀上了宝宝！<br>要怀多久？',['半年','十个月','将近一年'],i=>{flash(i===2?'猜对了！':'还要更久——将近一年',1600);this.phase='bubbles';startBubbles(this,()=>{this.phase='hold';setHint('<span>👆</span>按住屏幕，陪她熬过四季')})})},
  leave:leaveCommon,
  press(x,y){tapBubble(this,x,y)},
  frame(t,dt){const SY=H*0.14;cover(img.uwClear);lightRays(t);
   const si=Math.min(3,Math.floor(this.p*4)),[sname,scol]=SEASONS[si];
-  ctx.save();ctx.globalAlpha=this.phase==='ask'?0:0.18;ctx.fillStyle=scol;ctx.fillRect(0,0,W,H);ctx.restore();surfaceLine(SY,t);
+  ctx.save();ctx.globalAlpha=this.phase==='ask'||this.phase==='bubbles'?0:0.18;ctx.fillStyle=scol;ctx.fillRect(0,0,W,H);ctx.restore();surfaceLine(SY,t);
   if(this.phase==='hold'&&(P.down)){this.p=Math.min(1,this.p+dt/7);if(Math.random()<.5)this.flakes.push({x:Math.random()*W,y:-10,s:si,v:30+Math.random()*40,r:Math.random()*6})}
   for(const f of this.flakes){f.y+=f.v*dt;f.x+=Math.sin(f.y*.03)*.6}this.flakes=this.flakes.filter(f=>f.y<SY+30);
   ctx.save();for(const f of this.flakes){ctx.fillStyle=['#f2a7b3','#ffe27a','#d9813f','#ffffff'][f.s];ctx.beginPath();if(f.s===1){ctx.arc(f.x,f.y,3,0,7)}else ctx.ellipse(f.x,f.y,5,3,f.r,0,7);ctx.fill()}ctx.restore();
   const mw=Math.min(W*0.8,390),mx=W*0.52,my=H*0.48;sprite(img.momPreg,mx+Math.sin(t*.5)*6,my+Math.sin(t*.8)*4,mw,{phase:t*2,amp:reduce?0:4});
-  if(this.phase!=='ask'){ctx.save();ctx.font='900 34px system-ui';ctx.fillStyle='#2e3f3c';ctx.textAlign='center';ctx.fillText(sname,W/2,SY+60);ctx.font='800 13px system-ui';ctx.fillText(`第 ${Math.max(1,Math.min(11,Math.ceil(this.p*11)))} 个月`,W/2,SY+84);ctx.restore()}
+  if(this.phase!=='ask'&&this.phase!=='bubbles'){ctx.save();ctx.font='900 34px system-ui';ctx.fillStyle='#2e3f3c';ctx.textAlign='center';ctx.fillText(sname,W/2,SY+60);ctx.font='800 13px system-ui';ctx.fillText(`第 ${Math.max(1,Math.min(11,Math.ceil(this.p*11)))} 个月`,W/2,SY+84);ctx.restore()}
   if(this.phase==='hold'){holdRing(W/2,H*0.84,this.p,P.down?'坚持住':'按住');
-   [0.3,0.6,0.85].forEach((th,i)=>{if(this.bubs[i]&&this.p>th)this.bubs[i].hidden=false});
    if(this.p>0.55&&!this.scanned)this.scanned=last;
-   if(this.p>=1){if(this.bubs.every(b=>b.got)){this.phase='birth';this.bt=last;setHint('');flash('宝宝要出生了！',1400)}else if(!this.waitNote){this.waitNote=true;flash('还有秘密泡泡没戳破，点一下它！',2200);setHint('<span>✨</span>点发光的泡泡')}}}
+   if(this.p>=1){this.phase='birth';this.bt=last;setHint('');flash('宝宝要出生了！',1400)}}
   if(this.scanned&&last-this.scanned<4){const k=Math.min(1,(last-this.scanned)/0.8),px=mx-mw*0.05+Math.sin((last-this.scanned)*2)*mw*0.12,py=my+mw*0.2;
    sprite(img.probe,px,py+20*(1-k),Math.min(W*0.18,80),{ang:-0.5,alpha:k});
    ctx.save();ctx.globalAlpha=k;const bx=W-120,by=SY+20;ctx.fillStyle='#2f4a40';ctx.strokeStyle='#fbf6ea';ctx.lineWidth=4;ctx.beginPath();ctx.rect(bx,by,104,74);ctx.fill();ctx.stroke();
