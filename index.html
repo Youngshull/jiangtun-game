@@ -168,9 +168,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
    <div class="step" data-s="1"><div class="eyebrow">古人的段子</div><h2>“懒妇鱼”</h2><p>唐代有记载说：江豚油点的灯，照着赌博亮堂堂，照着读书干活就昏暗。民间干脆说它是“懒妇”变的。</p><p class="src" style="font-size:11px;color:#8f8a7a">陈藏器《本草拾遗》，《本草纲目》转引 · <em>原文待核对</em></p><button class="btn" data-next>所以，好吃吗？</button></div>
    <div class="step" data-s="2"><h2 style="font-size:28px">没人能告诉你。<br>也希望永远没人知道。</h2><p>现在它是国家一级保护动物，吃它违法。</p><button class="btn" data-next>它们还剩多少？</button></div>
    <div class="step" data-s="3"><div class="eyebrow">拖动看看</div><div class="big-num" id="popNum">3600</div><p id="popTxt">上世纪90年代初，长江里约有3600头江豚。</p>
-    <div class="timeline"><input type="range" min="0" max="4" step="1" value="0" id="popRange" aria-label="年份"><div class="yr"><span>90年代初</span><span>2006</span><span>2012</span><span>2017</span><span>2022</span></div></div>
+    <div class="timeline"><input type="range" min="0" max="5" step="1" value="0" id="popRange" aria-label="年份"><div class="yr"><span>90年代初</span><span>2006</span><span>2012</span><span>2017</span><span>2022</span><span>2025</span></div></div>
     <button class="btn hidden" data-next id="popNext">→</button></div>
-   <div class="step" data-s="4"><div class="big-num">1249</div><h2>你，是其中之一。</h2><p>2022年科考，整条长江只数到1249头江豚——第一次止跌回升。<br><b>抬头看看江面吧。</b></p><p class="src" style="font-size:11px;color:#8f8a7a">农业农村部 2022 年长江江豚科学考察结果</p><div class="row" style="display:flex;gap:10px"><button class="btn light" id="endBook" style="flex:1">📖 图鉴</button><button class="btn" id="endMap" style="flex:1">回到地图</button></div></div>
+   <div class="step" data-s="4"><div class="big-num">1426</div><h2>你，是其中之一。</h2><p>2025年专项调查，长江江豚恢复到1426头，比2022年多了177头。数量在回升，但它们仍然很少。<br><b>抬头看看江面吧。</b></p><p class="src" style="font-size:11px;color:#8f8a7a">农业农村部公布的2025年长江江豚专项调查结果（2026年1月30日国新办发布会）</p><div class="row" style="display:flex;gap:10px"><button class="btn light" id="endBook" style="flex:1">📖 图鉴</button><button class="btn" id="endMap" style="flex:1">回到地图</button></div></div>
   </div>
  </div>
 
@@ -189,7 +189,7 @@ const LEVELS=[
  {n:7,name:'被听见',ready:false},{n:8,name:'枯水期',ready:false},{n:9,name:'当妈妈',ready:false}];
 // lv 0 = opening, 10 = ending. ok:false => source still to be verified
 const SECRETS=[
- {id:1,lv:0,main:1,t:'江豚是鲸，用肺呼吸、喝奶长大',src:'国家林草局保护名录说明；Tang 等 2023',ok:1},
+ {id:1,lv:0,main:1,t:'江豚不是鱼，属于鲸类：用肺呼吸、喝奶长大',src:'国家林草局保护名录说明；Tang 等 2023',ok:1},
  {id:2,lv:1,main:1,t:'江豚宝宝出生，尾巴先出来更常见；“小26”是头先出生的例外',src:'Deng 等 2019；中科院水生所 2026.6.23',ok:1},
  {id:3,lv:1,t:'2022年科考，在长江干流发现了99对江豚母子',src:'2022年长江江豚科学考察',ok:0},
  {id:4,lv:1,t:'“小26”一出生就自己游上水面换气，满月时长得好好的',src:'中科院水生所 2026.6.23',ok:1},
@@ -218,7 +218,7 @@ const SECRETS=[
  {id:27,lv:9,t:'研究人员还能从便便里检测激素，看它怀没怀孕',src:'2019 粪便激素研究',ok:1},
  {id:28,lv:9,t:'人工迁地保护的江豚约160头，每年有15头以上宝宝出生',src:'官方发布',ok:0},
  {id:29,lv:10,t:'古人为了熬油捕杀江豚，还编出了“懒妇鱼”的段子',src:'水生所研究者记录；陈藏器',ok:0},
- {id:30,lv:10,t:'从约3600头跌到1012头，再回升到1249头',src:'农业农村部历次科考',ok:0},
+ {id:30,lv:10,t:'从约3600头跌到1012头，再回升到1426头',src:'农业农村部历次调查；2025年专项调查1426头',ok:1},
  {id:31,lv:10,t:'现在的长江江豚，比野生大熊猫还少',src:'待附第四次大熊猫调查',ok:0}];
 const PLACES={shizhongshan:'石钟山 · 认识江豚',boat:'游船上 · 认识江豚'};
 /* ================= storage ================= */
@@ -233,7 +233,7 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const img={};
 const LOADING={};
 function loadKeys(keys,onEach){let n=0;return Promise.all(keys.map(k=>(LOADING[k]||(LOADING[k]=new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=A[k];img[k]=i}))).then(()=>{n++;onEach&&onEach(n/keys.length)})))}
-const BOOT_TIPS=['你知道吗？江豚是鲸，不是鱼','江豚宝宝出生，常常是尾巴先出来','江豚靠声音“看”世界','江豚妈妈要怀将近一年','2022年，整条长江只数到1249头江豚'];
+const BOOT_TIPS=['你知道吗？江豚不是鱼，属于鲸类','江豚宝宝出生，常常是尾巴先出来','江豚靠声音“看”世界','江豚妈妈要怀将近一年','2025年调查，长江里有1426头江豚'];
 let bootTipI=0;const bootTipTimer=setInterval(()=>{const el=document.getElementById('bootTip');if(!el){clearInterval(bootTipTimer);return}el.style.opacity=0;setTimeout(()=>{el.textContent=BOOT_TIPS[bootTipI++%BOOT_TIPS.length];el.style.opacity=1},300)},2200);
 const FIRST=['bg','calfFront','calf','mom','blueWhale'];let allReady=false,allPromise=null;
 let W=0,H=0,DPR=1;
@@ -310,8 +310,8 @@ const SCENES={};
 /* ---------- opening ---------- */
 // 0 guess → 1 it's a whale → 2 whales are mammals → 3 so it breathes air at the surface → 4 become a porpoise
 const OPEN_STEPS=[null,
- fb=>`<div class="eyebrow">${fb}</div><h2>不是！江豚是鲸！</h2><p>名字里带个“豚”，长得也像鱼，可它跟鱼根本不是一家。<b>地球上最大的动物——蓝鲸，是它的远房亲戚。</b></p><button class="btn" data-open-next>鲸又是什么？ →</button>`,
- ()=>`<div class="eyebrow">原来是这样！</div><h2>鲸是哺乳动物，和我们一样喝奶长大</h2><p>江豚宝宝在妈妈肚子里长大，生下来以后，靠喝妈妈的奶长大。</p><button class="btn" data-open-next>那它在水里怎么呼吸？ →</button>`,
+ fb=>`<div class="eyebrow">${fb}</div><h2>不是鱼！江豚属于鲸类</h2><p>名字里带个“豚”，长得也像鱼，可它跟鱼根本不是一家。它是一种小型的齿鲸，和海豚是近亲——<b>地球上最大的动物蓝鲸，也是它的远房亲戚。</b></p><button class="btn" data-open-next>鲸类有什么特别？ →</button>`,
+ ()=>`<div class="eyebrow">原来是这样！</div><h2>鲸类是哺乳动物，和我们一样喝奶长大</h2><p>江豚宝宝在妈妈肚子里长大，生下来以后，靠喝妈妈的奶长大。</p><button class="btn" data-open-next>那它在水里怎么呼吸？ →</button>`,
  ()=>`<div class="eyebrow">所以……</div><h2>它没有鳃，得浮上水面换气</h2><p>鱼用鳃在水里呼吸；江豚用<b>肺</b>呼吸，隔一会儿就要浮到水面，用头顶的鼻孔换一口气。</p><div class="tapnote">👆 点一下画面，帮它浮上去换口气</div><button class="btn" data-open-next>知道了 →</button>`,
  ()=>`<h2>至于好不好吃——</h2><p><b>先当一回江豚，你就知道答案了。</b>记得常常浮上水面换气哦。</p><button class="btn big" id="becomeBtn">变成一头江豚 →</button>`];
 SCENES.opening={enter(){show('#opening',true);const q=$('#openQ');q.innerHTML='江豚能吃吗？<br>好吃吗？';q.classList.remove('hidden');$('#openIntro').classList.remove('hidden');$('#openChoices').classList.add('hidden');$('#openReveal').classList.add('hidden');this.step=0;this.rt=0;this.breathT=0;save.opened=true;persist()},
@@ -395,10 +395,10 @@ SCENES.L3={enter(){hud.classList.remove('hidden');$('#badgeSmall').textContent='
   showCard(`<img class="pet" src="${A.calfFront}" alt=""><div class="eyebrow">原来是这样！</div><h2>古人说，江豚一跃出水面，大风就要来了</h2><p>他们管这叫“江豚拜风”。石钟山一带一直流传着这个说法。</p>${srcLine(s)}${left?`<p style="margin-top:8px;font-size:13px">这一关还有 ${left} 个秘密泡泡没碰到。</p>`:''}<div class="row"><button class="btn" data-map>回到地图</button><button class="btn light" data-replay>${left?'再去找泡泡':'再玩一次'}</button></div>`)}};
 
 /* ---------- ending ---------- */
-const POP=[[3600,'上世纪90年代初，长江里约有3600头江豚。'],[1800,'2006年，只剩约1800头。'],[1045,'2012年，约1045头。'],[1012,'2017年，1012头。这是最低的时候。'],[1249,'2022年，1249头。第一次止跌回升！']];
+const POP=[[3600,'上世纪90年代初，长江里约有3600头江豚。'],[1800,'2006年，只剩约1800头。'],[1045,'2012年，约1045头。'],[1012,'2017年，1012头。这是最低的时候。'],[1249,'2022年，1249头。第一次止跌回升！'],[1426,'2025年，1426头，比2022年又多了177头！']];
 SCENES.ending={enter(){show('#ending',true);this.step(0);unlock(29);$('#popRange').value=0;this.pop(0)},
  step(i){document.querySelectorAll('.end-panel .step').forEach(s=>s.classList.toggle('on',+s.dataset.s===i));this.cur=i;if(i===3)unlock(30);if(i===4)unlock(31)},
- pop(i){$('#popNum').textContent=POP[i][0];$('#popTxt').textContent=POP[i][1];if(+i===4)$('#popNext').classList.remove('hidden')},
+ pop(i){$('#popNum').textContent=POP[i][0];$('#popTxt').textContent=POP[i][1];if(+i===5)$('#popNext').classList.remove('hidden')},
  frame(t,dt){WY=H*0.50;coverBg(img.bg,0.5,H*0.30,0.405);const mw2=Math.min(W*0.6,300),mb=bent(img.mom,mw2,t*2.2,reduce?0:6);drawPartial(mb,W*0.12+Math.sin(t*.4)*10,WY-mb.h*0.5+mb.h*0.14,0,t,0.55);
   const cw=Math.min(W*0.32,160),cb=bent(img.calf,cw,t*3.2,reduce?0:5);drawPartial(cb,W*0.56+Math.sin(t*.4+1)*10,WY-cb.h*0.5+cb.h*0.1+Math.sin(t*1.6)*3,0,t,0.55);surfaceStrokes(t);fx(dt)}};
 document.querySelector('.end-panel').addEventListener('click',e=>{if(e.target.closest('[data-next]'))SCENES.ending.step(SCENES.ending.cur+1)});
