@@ -48,10 +48,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .card .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .card .pet{position:absolute;right:-4px;top:-70px;width:112px;filter:drop-shadow(0 4px 0 rgba(60,50,30,.2));animation:bob 2.4s ease-in-out infinite;pointer-events:none}
 @keyframes bob{50%{transform:translateY(-6px) rotate(-3deg)}}
-.toast{position:absolute;left:50%;top:84px;transform:translate(-50%,-30px) rotate(-1deg);opacity:0;width:calc(100% - 40px);max-width:420px;padding:12px 16px;z-index:7;transition:.35s;pointer-events:none}
-.toast.show{opacity:1;transform:translate(-50%,0) rotate(-1deg)}
-.toast b{display:block;font-size:12px;color:var(--accent);margin-bottom:3px}
-.toast div{font-size:15px;font-weight:700;line-height:1.5}
+.toast{position:absolute;left:50%;top:84px;transform:translate(-50%,-30px) rotate(-1deg);opacity:0;visibility:hidden;width:calc(100% - 28px);max-width:460px;padding:18px 54px 20px 20px;border-radius:20px;box-shadow:0 6px 0 rgba(60,50,30,.25),0 0 0 5px #fff;z-index:9;transition:opacity .3s,transform .3s,visibility 0s .3s}
+.toast.show{opacity:1;visibility:visible;transform:translate(-50%,0) rotate(-1deg);transition:opacity .3s,transform .3s}
+.toast b{display:block;font-size:15px;color:var(--accent);margin-bottom:6px;letter-spacing:.04em}
+.toast div{font-size:20px;font-weight:800;line-height:1.55;color:var(--ink)}
+.toast .x{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:50%;background:#e9e0cb;color:var(--ink);font-size:24px;font-weight:700;line-height:40px;text-align:center}
+.toast .x:active{transform:scale(.92)}
 /* opening */
 .opening{display:flex;flex-direction:column;padding:max(70px,calc(env(safe-area-inset-top) + 60px)) 22px 0;z-index:3;pointer-events:none}
 .opening>*{pointer-events:auto}
@@ -143,7 +145,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   <div class="topbtns"><div class="paper dots hidden" id="dots"></div><button class="paper chip" id="bookBtn" aria-label="打开秘密图鉴">📖 <span class="n" id="bookCount">0</span>/<span id="bookTotal">0</span></button></div>
  </div>
  <div class="paper hint hidden" id="hint"></div>
- <div class="paper toast" id="toast" role="status" aria-live="polite"><b>发现一个秘密泡泡！</b><div id="toastText"></div></div>
+ <div class="paper toast" id="toast" role="dialog" aria-live="polite" aria-label="秘密泡泡"><b>发现一个秘密泡泡！</b><div id="toastText"></div><button class="x" id="toastClose" aria-label="关闭">×</button></div>
  <div class="paper card" id="card" role="dialog" aria-live="polite"></div>
 
  <!-- opening -->
@@ -270,7 +272,10 @@ function drawBubble(x,y,r,t){ctx.save();const g=ctx.createRadialGradient(x-r*.3,
 const hud=$('#hud'),hint=$('#hint'),card=$('#card'),toastEl=$('#toast'),dotsEl=$('#dots');
 function updateCount(){$('#bookCount').textContent=save.secrets.length;$('#bookTotal').textContent=SECRETS.length}
 function unlock(id){if(save.secrets.includes(id))return false;save.secrets.push(id);persist();updateCount();return true}
-let toastTimer;function toast(text){$('#toastText').textContent=text;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),3200)}
+// the secret stays on screen until the player closes it
+function toast(text){$('#toastText').textContent=text;toastEl.classList.add('show')}
+function closeToast(){toastEl.classList.remove('show')}
+$('#toastClose').onclick=e=>{e.stopPropagation();closeToast()};
 function srcLine(s){return `<div class="src">出处：${s.src}${s.ok?'':' · <em>出处待核实</em>'}</div>`}
 function showCard(html){card.innerHTML=html;card.classList.add('show')}
 function hideCard(){card.classList.remove('show')}
@@ -290,7 +295,7 @@ card.addEventListener('click',e=>{if(e.target.closest('[data-close]'))hideCard()
 let scene=null,last=0;
 function show(id,on){$(id).classList.toggle('hidden',!on)}
 function go(name){location.hash=name}
-function route(){const h=(location.hash||'').slice(1);
+function route(){const h=(location.hash||'').slice(1);closeToast();
  const needAll=h&&h!=='start'&&h!=='map';if(needAll&&!allReady&&allPromise){$('#wait').classList.remove('hidden');allPromise.then(()=>{$('#wait').classList.add('hidden');route()});return}hideCard();$('#book').classList.add('hidden');parts.length=0;rings.length=0;
  let s=SCENES.opening;if(h==='map')s=SCENES.map;else if(h==='end')s=SCENES.ending;else if(/^L\d$/.test(h)){const lv=LEVELS[+h[1]-1];s=lv&&lv.ready?SCENES['L'+lv.n]:SCENES.map}else if(h==='start'||!h)s=SCENES.opening;
  if(scene&&scene.leave)scene.leave();scene=s;['#opening','#map','#ending'].forEach(id=>show(id,false));hud.classList.add('hidden');setHint('');setDots(0);scene.enter();}
