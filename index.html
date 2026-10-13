@@ -159,7 +159,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   <div class="topbtns"><div class="paper dots hidden" id="dots"></div><button class="paper chip" id="bookBtn" aria-label="打开秘密图鉴">📖 <span class="n" id="bookCount">0</span>/<span id="bookTotal">0</span></button></div>
  </div>
  <div class="paper hint hidden" id="hint"></div>
- <div class="toast" id="toast" role="dialog" aria-modal="true" aria-live="polite" aria-label="秘密泡泡"><div class="paper secret-card"><img class="secret-peek" id="peekImg" alt=""><b>✨ 发现一个秘密泡泡！</b><div id="toastText"></div><div class="sbtns"><button class="btn" id="toastClose">关闭</button></div></div></div>
+ <div class="toast" id="toast" role="dialog" aria-modal="true" aria-live="polite" aria-label="秘密泡泡"><div class="paper secret-card"><img class="secret-peek" id="peekImg" alt=""><b>✨ 发现一个秘密泡泡！</b><div id="toastText"></div><div class="sbtns"><button class="btn light" id="toastReplay">🔊 再听一遍</button><button class="btn" id="toastClose">关闭</button></div></div></div>
  <div class="paper card" id="card" role="dialog" aria-live="polite"></div>
 
  <!-- opening -->
@@ -198,6 +198,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 
 <script>
 const A={"bg":"assets/bg.webp?v=98654e7a","mountain":"assets/mountain.webp?v=bcf6457b","calf":"assets/calf.webp?v=31a5d918","mom":"assets/mom.webp?v=555985fd","calfFront":"assets/calfFront.webp?v=80cd3c38","mom34":"assets/mom34.webp?v=09dbc74a","calf34":"assets/calf34.webp?v=e1d069b7","uwClear":"assets/uwClear.webp?v=34c3476b","uwMurky":"assets/uwMurky.webp?v=c431a9f7","lowwater":"assets/lowwater.webp?v=727c0c01","momPreg":"assets/momPreg.webp?v=c00ebe19","newborn":"assets/newborn.webp?v=153d7fe9","calfUp":"assets/calfUp.webp?v=3b60d8fc","friendL":"assets/friendL.webp?v=a1bddc56","friend34L":"assets/friend34L.webp?v=4cc0c749","fishSilver":"assets/fishSilver.webp?v=0d1b8d3a","fishGold":"assets/fishGold.webp?v=075ae336","fishStripe":"assets/fishStripe.webp?v=6bbb79cc","lamp":"assets/lamp.webp?v=f19d3d71","blueWhale":"assets/blueWhale.webp?v=662bd933","cargo":"assets/cargo.webp?v=b7adf0fa","tourboat":"assets/tourboat.webp?v=9b193b5e","buoy":"assets/buoy.webp?v=8cb97b86","probe":"assets/probe.webp?v=64289cf0","peekCalf":"assets/peekCalf.webp?v=bf87a686"};
+const VOICE={"1":"assets/voice/01.m4a?v=9914bc90","2":"assets/voice/02.m4a?v=4ea47634","3":"assets/voice/03.m4a?v=628d5171","4":"assets/voice/04.m4a?v=4b50878d","5":"assets/voice/05.m4a?v=223766d9","6":"assets/voice/06.m4a?v=2541059d","7":"assets/voice/07.m4a?v=44eb4716","8":"assets/voice/08.m4a?v=74453f26","9":"assets/voice/09.m4a?v=71ea11e5","10":"assets/voice/10.m4a?v=44b7ca3e","11":"assets/voice/11.m4a?v=f6509db0","12":"assets/voice/12.m4a?v=57946c9f","13":"assets/voice/13.m4a?v=77a26aa1","14":"assets/voice/14.m4a?v=50ca3c1a","15":"assets/voice/15.m4a?v=017bd527","16":"assets/voice/16.m4a?v=4731def9","17":"assets/voice/17.m4a?v=cf766e5a","18":"assets/voice/18.m4a?v=b43ff2eb","19":"assets/voice/19.m4a?v=d640e126","20":"assets/voice/20.m4a?v=7c2a7b1e","21":"assets/voice/21.m4a?v=3d7bcb24","22":"assets/voice/22.m4a?v=e1a7732c","23":"assets/voice/23.m4a?v=f2694519","24":"assets/voice/24.m4a?v=645bdb4e","25":"assets/voice/25.m4a?v=a32b4dda","26":"assets/voice/26.m4a?v=212b6eb2","27":"assets/voice/27.m4a?v=b914c87a","28":"assets/voice/28.m4a?v=ffba4aa1","29":"assets/voice/29.m4a?v=8fdbc4f1","30":"assets/voice/30.m4a?v=0ca94678","31":"assets/voice/31.m4a?v=085c1cec"};// narration per secret id (first-person, GPT-SoVITS)
 /* ================= data ================= */
 const LEVELS=[
  {n:1,name:'出生',ready:false},{n:2,name:'喝奶',ready:false},{n:3,name:'第一次冒出江面',ready:true},
@@ -205,37 +206,37 @@ const LEVELS=[
  {n:7,name:'被听见',ready:false},{n:8,name:'枯水期',ready:false},{n:9,name:'当妈妈',ready:false}];
 // lv 0 = opening, 10 = ending. ok:false => source still to be verified
 const SECRETS=[
- {id:1,lv:0,main:1,t:'我可不是鱼哦！我属于鲸类，用肺呼吸，是喝妈妈的奶长大的。',src:'国家林草局保护名录说明；Tang 等 2023',ok:1},
- {id:2,lv:1,main:1,t:'我们江豚宝宝出生的时候，常常是尾巴先出来，跟人类正好反过来！不过也有像“小26”那样，头先出来的。',src:'Deng 等 2019；中科院水生所 2026.6.23',ok:1},
- {id:3,lv:1,t:'2022年，科学家在长江干流里，数到了99对江豚妈妈和宝宝。',src:'2022年长江江豚科学考察',ok:0},
+ {id:1,lv:0,main:1,t:'我可不是鱼哦！我属于鲸类，是一种小型齿鲸。我用肺呼吸，是喝妈妈的奶长大的。',src:'国家林草局保护名录说明；Tang 等 2023',ok:1},
+ {id:2,lv:1,main:1,t:'我们江豚宝宝出生的时候，常常是尾巴先出来，跟人类正好反过来！不过2026年6月，水生所也记录到一头头先出生的宝宝，叫“小26”。',src:'Deng 等 2019；中科院水生所 2026.6.23',ok:1},
+ {id:3,lv:1,t:'2022年长江江豚科学考察，在长江干流里发现了99对江豚妈妈和宝宝。',src:'2022年长江江豚科学考察',ok:0},
  {id:4,lv:1,t:'“小26”一出生，就自己游上水面吸了第一口气，满月的时候长得好好的！',src:'中科院水生所 2026.6.23',ok:1},
- {id:5,lv:2,main:1,t:'我喝奶的时候，要从妈妈肚子下面凑过去，妈妈会侧过身来帮我。一口只有四五秒哦！',src:'Xian 等 2012',ok:1},
- {id:6,lv:2,t:'研究人员记录过一头小江豚，一直喝奶喝到第483天，一岁多才断奶呢。',src:'Xian 等 2012（一头幼豚的记录）',ok:1},
- {id:7,lv:2,t:'你猜谁更黏谁？研究发现，喂奶那段时间，其实是妈妈更常主动靠近宝宝！',src:'Chen 等 2018',ok:1},
- {id:8,lv:3,main:1,t:'老人们说，我们一跃出水面，大风就要来了。这叫“江豚拜风”。',src:'民间说法',ok:0},
+ {id:5,lv:2,main:1,t:'我喝奶的时候，要从妈妈肚子下方凑过去，妈妈会侧过身来配合我。研究里，小江豚每次吃奶平均只有四到五秒！',src:'Xian 等 2012',ok:1},
+ {id:6,lv:2,t:'研究人员记录过一头小江豚，一直喝奶喝到出生后第483天，也就是一岁四个月左右，才完全断奶。',src:'Xian 等 2012（一头幼豚的记录）',ok:1},
+ {id:7,lv:2,t:'你猜谁更黏谁？研究人员观察了两对江豚母子，发现喂奶那段时间，是妈妈更常主动靠近宝宝！',src:'Chen 等 2018',ok:1},
+ {id:8,lv:3,main:1,t:'老人们说，我们江豚一跃出水面，大风就要来了。这个说法叫“江豚拜风”。',src:'民间说法',ok:0},
  {id:9,lv:3,t:'古人给我们起过好多外号：江猪、水猪，还有馋鱼！',src:'《本草纲目》“海豚鱼”条释名',ok:0},
- {id:10,lv:3,t:'我没有背鳍哦，背上只有一道低低的隆起，上面长着一排小疙瘩。',src:'科考报道',ok:0},
- {id:11,lv:3,t:'大家叫我“微笑天使”，其实我天生就长着这张笑脸，不管开不开心都一样。',src:'形态描述',ok:1},
- {id:12,lv:4,main:1,t:'我一直在“说话”，可你一声也听不见！我找路、找鱼用的声音太高了，人的耳朵听不到。',src:'Li 等 2005',ok:1},
- {id:13,lv:4,t:'悄悄告诉你：我下巴附近有一团特别的脂肪，能帮我收声。',src:'Mooney 等 2014',ok:1},
- {id:14,lv:4,t:'住在水池里、网围里和大江里的江豚，发出的定位声还不太一样呢。',src:'Fang 等 2015',ok:1},
- {id:15,lv:5,main:1,t:'我们江豚也会挑朋友，有的伙伴总爱和我一起下潜。',src:'Sakai 等 2011',ok:1},
- {id:16,lv:5,t:'好朋友不一定是妈妈，别的江豚也可以哦！',src:'Sakai 等 2011',ok:1},
- {id:17,lv:6,main:1,t:'白天船太多、太吵，我们只好把吃饭挪到晚上，改吃“夜宵”。',src:'Qiu 等 2025',ok:1},
- {id:18,lv:6,t:'从2021年开始，长江实行“十年禁渔”，让江里的鱼好好休养。',src:'官方政策',ok:0},
- {id:19,lv:7,main:1,t:'在长江和鄱阳湖交汇的地方，科学家挂了水下录音机。834天里，有773天都录到了我们的声音！',src:'Duan 等 2023',ok:1},
- {id:20,lv:7,t:'不过，真正有我们声音的时间，只占3.8%。我们总是来去匆匆。',src:'Duan 等 2023',ok:1},
- {id:21,lv:7,t:'2022年调查时，全长江大约四成的江豚，都住在鄱阳湖里。',src:'2022年长江江豚科学考察',ok:0},
- {id:22,lv:8,main:1,t:'水退得太快的时候，采砂留下的深坑和沙脊，会把我们困住，很容易搁浅。',src:'Biological Conservation 2025',ok:1},
- {id:23,lv:8,t:'我们长江江豚已经适应了淡水，和海里的江豚在基因上分得很开了。',src:'Zhou 等 2018',ok:1},
- {id:24,lv:8,t:'长江里还有一位老邻居，叫白鱀豚。2006年，科学家找遍长江，也没能再找到它。',src:'2006年长江淡水豚考察',ok:0},
- {id:25,lv:9,main:1,t:'江豚妈妈怀一个宝宝，要将近一年，比“十月怀胎”还久！',src:'Zeng 等 2022',ok:1},
- {id:26,lv:9,t:'在保护基地里，研究人员真的会给江豚妈妈做B超，量量宝宝有多大。',src:'Zeng 等 2022',ok:1},
- {id:27,lv:9,t:'研究人员还能从便便里检测激素，看看江豚妈妈是不是怀孕了。',src:'2019 粪便激素研究',ok:1},
- {id:28,lv:9,t:'在人工保护的地方，生活着大约160头江豚，每年都有十几个宝宝出生。',src:'官方发布',ok:0},
- {id:29,lv:10,t:'古人曾经为了熬油捕捉我们，还编了个“懒妇鱼”的故事。',src:'水生所研究者记录；陈藏器',ok:0},
- {id:30,lv:10,t:'我们曾经有大约3600头，一度只剩1012头。到2025年，又回升到了1426头！',src:'农业农村部历次调查；2025年专项调查1426头',ok:1},
- {id:31,lv:10,t:'现在的长江江豚，比野外的大熊猫还少。',src:'待附第四次大熊猫调查',ok:0}];
+ {id:10,lv:3,t:'我没有背鳍哦！背上只有一道低低的隆起，上面长着一排小小的棘突。',src:'科考报道',ok:0},
+ {id:11,lv:3,t:'大家叫我“微笑天使”，其实这是我天生的嘴型，不管开不开心，看起来都像在笑。',src:'形态描述',ok:1},
+ {id:12,lv:4,main:1,t:'我一直在发出“定位声”，可你一声也听不见！它的频率平均约125千赫，人的耳朵最高只能听到约20千赫。我就靠这种声音找路、找鱼。',src:'Li 等 2005',ok:1},
+ {id:13,lv:4,t:'悄悄告诉你：我的下巴附近有一团特殊的脂肪，能帮我把水里的声音传到耳朵里。',src:'Mooney 等 2014',ok:1},
+ {id:14,lv:4,t:'研究发现，住在水池里、网围里和野外大江里的江豚，发出的定位声还不太一样呢。',src:'Fang 等 2015',ok:1},
+ {id:15,lv:5,main:1,t:'研究人员给6头野外江豚戴上记录器，发现其中有两对，总是更常一起同步下潜。我们江豚也会挑朋友！',src:'Sakai 等 2011',ok:1},
+ {id:16,lv:5,t:'这种好朋友不只是妈妈和宝宝，其他江豚之间也会结伴哦！',src:'Sakai 等 2011',ok:1},
+ {id:17,lv:6,main:1,t:'研究发现，白天船多、噪音大，我们就把觅食挪到夜里；疫情期间船少了，白天觅食又多了起来。',src:'Qiu 等 2025',ok:1},
+ {id:18,lv:6,t:'从2021年1月1日起，长江重点水域开始“十年禁渔”，让江里的鱼休养生息。',src:'官方政策',ok:0},
+ {id:19,lv:7,main:1,t:'科学家在长江和鄱阳湖交汇处的航标上，挂了水下录音机：834天里，有773天都录到了我们的声音！',src:'Duan 等 2023',ok:1},
+ {id:20,lv:7,t:'不过，真正录到我们声音的时间，只占全部录音时长的3.8%。我们总是来去匆匆。',src:'Duan 等 2023',ok:1},
+ {id:21,lv:7,t:'2022年调查时，鄱阳湖里大约有492头江豚，差不多占整条长江的四成。',src:'2022年长江江豚科学考察',ok:0},
+ {id:22,lv:8,main:1,t:'采砂留下的深坑和沙脊，再加上极端枯水，会让我们更容易被困住、搁浅。坑里看着有水，四周却出不去。',src:'Biological Conservation 2025',ok:1},
+ {id:23,lv:8,t:'基因研究发现，我们长江江豚已经适应了淡水生活，和海里的江豚在基因上明显分开了。',src:'Zhou 等 2018',ok:1},
+ {id:24,lv:8,t:'长江里还有一位老邻居，叫白鱀豚。2006年，科学家沿长江考察了六个星期，也没能再找到它。',src:'2006年长江淡水豚考察',ok:0},
+ {id:25,lv:9,main:1,t:'研究估计，江豚妈妈怀一个宝宝要将近一年，比“十月怀胎”还久！',src:'Zeng 等 2022',ok:1},
+ {id:26,lv:9,t:'在人工照养的地方，研究人员真的会给怀孕的江豚妈妈做B超，量量宝宝的胸围和身长。',src:'Zeng 等 2022',ok:1},
+ {id:27,lv:9,t:'研究人员还能从江豚的便便里检测激素，了解江豚妈妈是不是怀孕了。',src:'2019 粪便激素研究',ok:1},
+ {id:28,lv:9,t:'人工迁地保护的江豚大约有160头，每年都有15头以上的宝宝出生。',src:'官方发布',ok:0},
+ {id:29,lv:10,t:'古人曾经为了熬油捕捉我们。唐代的书里还说，江豚油点的灯，照着赌博很亮，照着读书就暗，所以叫我们“懒妇鱼”。',src:'水生所研究者记录；陈藏器',ok:0},
+ {id:30,lv:10,t:'上世纪90年代初，长江里大约有3600头江豚，2017年只剩1012头。到2025年，又回升到了1426头！',src:'农业农村部历次调查；2025年专项调查1426头',ok:1},
+ {id:31,lv:10,t:'现在的长江江豚，比野外的大熊猫还要少。',src:'待附第四次大熊猫调查',ok:0}];
 const PLACES={shizhongshan:'石钟山 · 认识江豚',boat:'游船上 · 认识江豚'};
 /* ================= storage ================= */
 const KEY='jiangtun-game-v2';
@@ -287,9 +288,11 @@ const hud=$('#hud'),hint=$('#hint'),card=$('#card'),toastEl=$('#toast'),dotsEl=$
 function updateCount(){$('#bookCount').textContent=save.secrets.length;$('#bookTotal').textContent=SECRETS.length}
 function unlock(id){if(save.secrets.includes(id))return false;save.secrets.push(id);persist();updateCount();return true}
 // the secret stays on screen until the player closes it
-function toast(text){$('#toastText').textContent=text;const pk=$('#peekImg');if(!pk.src)pk.src=A.peekCalf||A.calfFront;toastEl.classList.add('show');window.SFX&&SFX.secret()}
-function closeToast(){toastEl.classList.remove('show')}
+let toastId=0;
+function toast(text){$('#toastText').textContent=text;const pk=$('#peekImg');if(!pk.src)pk.src=A.peekCalf||A.calfFront;toastEl.classList.add('show');const s=SECRETS.find(x=>text.startsWith(x.t));toastId=s?s.id:0;$('#toastReplay').classList.toggle('hidden',!VOICE[toastId]);if(window.SFX){SFX.secret();if(toastId)SFX.voice(toastId)}}
+function closeToast(){toastEl.classList.remove('show');window.SFX&&SFX.stopVoice()}
 $('#toastClose').onclick=e=>{e.stopPropagation();closeToast()};
+$('#toastReplay').onclick=e=>{e.stopPropagation();toastId&&SFX.voice(toastId)};
 function srcLine(s){return `<div class="src">出处：${s.src}${s.ok?'':' · <em>出处待核实</em>'}</div>`}
 function showCard(html){card.innerHTML=html;card.classList.add('show')}
 function hideCard(){card.classList.remove('show')}
@@ -300,10 +303,10 @@ function openBook(){const body=$('#bookBody');const groups=[[0,'开场'],...LEVE
  body.innerHTML=groups.map(([lv,label])=>{const items=SECRETS.filter(s=>s.lv===lv);return `<div class="book-group"><h3>${label}</h3><div class="book-grid">${items.map(s=>save.secrets.includes(s.id)?`<button class="slot" data-sid="${s.id}">${s.main?'<span class="main">主秘密</span><br>':''}${s.t}</button>`:`<div class="slot locked">？<br><small>${lv===0?'开场':lv===10?'结尾':'第'+lv+'关'}里藏着</small></div>`).join('')}</div></div>`}).join('');
  $('#bookSum').textContent=`已收集 ${save.secrets.length} / ${SECRETS.length}`;$('#book').classList.remove('hidden')}
 $('#bookBody').addEventListener('click',e=>{const b=e.target.closest('[data-sid]');if(!b)return;const s=SECRETS.find(x=>x.id==b.dataset.sid);$('#book').classList.add('hidden');
- showCard(`<div class="eyebrow">图鉴 · 秘密 ${String(s.id).padStart(2,'0')}</div><h2>${s.t}</h2>${srcLine(s)}<div class="row"><button class="btn" data-close>好的</button><button class="btn light" data-book>回到图鉴</button></div>`)});
+ showCard(`<div class="eyebrow">图鉴 · 秘密 ${String(s.id).padStart(2,'0')}</div><h2>${s.t}</h2>${srcLine(s)}<div class="row">${VOICE[s.id]?`<button class="btn light" data-voice="${s.id}">🔊 听小江豚讲</button>`:''}<button class="btn" data-close>好的</button><button class="btn light" data-book>回到图鉴</button></div>`)});
 $('#bookClose').onclick=()=>$('#book').classList.add('hidden');
 $('#bookBtn').onclick=openBook;$('#homeBtn').onclick=()=>go('start');$('#mapBook').onclick=openBook;$('#endBook').onclick=openBook;
-card.addEventListener('click',e=>{if(e.target.closest('[data-close]'))hideCard();if(e.target.closest('[data-book]')){hideCard();openBook()}if(e.target.closest('[data-map]')){hideCard();go('map')}
+card.addEventListener('click',e=>{const vb=e.target.closest('[data-voice]');if(vb){SFX.voice(+vb.dataset.voice);return}if(e.target.closest('[data-close]')){hideCard();window.SFX&&SFX.stopVoice()}if(e.target.closest('[data-book]')){hideCard();openBook()}if(e.target.closest('[data-map]')){hideCard();go('map')}
  const nx=e.target.closest('[data-level]');if(nx){hideCard();go('L'+nx.dataset.level)}if(e.target.closest('[data-replay]')){hideCard();scene.leave&&scene.leave();scene.enter&&scene.enter(true)}if(e.target.closest('[data-end]')){hideCard();go('end')}});
 /* ================= scenes ================= */
 let scene=null,last=0;
@@ -721,9 +724,15 @@ const SFX=(()=>{
  function unlockAudio(){init();if(!ac)return;if(ac.state==='suspended')ac.resume();if(!started){started=true;startMusic()}}
  ['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev,unlockAudio,{passive:true}));
  const safe=fn=>(...a)=>{if(!ac||!on)return;try{fn(...a)}catch(e){}};
- let lastSplash=0;
+ let lastSplash=0,voiceSrc=null,voiceBus=null;const voiceCache={};
+ // narration: decoded through Web Audio (already unlocked by the first tap), music ducks while it plays
+ async function voice(id){if(!ac||!on||!VOICE[id])return;stopVoice();if(!voiceBus){voiceBus=ac.createGain();voiceBus.gain.value=1.4;voiceBus.connect(master)}
+  try{const buf=voiceCache[id]||(voiceCache[id]=await fetch(VOICE[id]).then(r=>r.arrayBuffer()).then(b=>new Promise((ok,no)=>ac.decodeAudioData(b,ok,no))));
+   const s=ac.createBufferSource();s.buffer=buf;s.connect(voiceBus);musicBus.gain.setTargetAtTime(0.25,now(),.15);s.onended=()=>{if(voiceSrc===s){voiceSrc=null;musicBus.gain.setTargetAtTime(0.85,now(),.6)}};voiceSrc=s;s.start(now()+.35);return true}catch(e){return false}}
+ function stopVoice(){if(voiceSrc){try{voiceSrc.stop()}catch(e){}voiceSrc=null;if(ac)musicBus.gain.setTargetAtTime(0.85,now(),.6)}}
  return {
-  toggle(){on=!on;if(master)master.gain.setTargetAtTime(on?1:0,ac.currentTime,.05);return on},
+  voice,stopVoice,
+  toggle(){on=!on;if(!on)stopVoice();if(master)master.gain.setTargetAtTime(on?1:0,ac.currentTime,.05);return on},
   get on(){return on},
   click:safe(()=>tone(880,now(),.08,{type:'triangle',vol:.12})),
   pop:safe(()=>{const t=now();tone(420,t,.18,{slideTo:1300,vol:.3});tone(1600,t+.05,.12,{vol:.08})}),
